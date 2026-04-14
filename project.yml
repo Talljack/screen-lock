@@ -1,0 +1,22 @@
+name: ScreenLock
+options:
+  bundleIdPrefix: com.yugangcao
+  deploymentTarget:
+    macOS: "10.15"
+targets:
+  ScreenLock:
+    type: application
+    platform: macOS
+    sources:
+      - ScreenLock
+    info:
+      path: ScreenLock/App/Info.plist
+      properties:
+        LSUIElement: true
+        NSAppleEventsUsageDescription: "ScreenLock needs permission to lock your screen at scheduled times."
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.yugangcao.screenlock
+      INFOPLIST_FILE: ScreenLock/App/Info.plist
+      MACOSX_DEPLOYMENT_TARGET: "10.15"
+      ENABLE_HARDENED_RUNTIME: NO
+      CODE_SIGN_ENTITLEMENTS: ""
