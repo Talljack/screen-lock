@@ -6,6 +6,8 @@ class SettingsManager {
     private let fileURL: URL
     private(set) var settings: Settings
 
+    var onSettingsChanged: (() -> Void)?
+
     private init() {
         // Get Application Support directory
         let appSupport = FileManager.default.urls(
@@ -36,6 +38,7 @@ class SettingsManager {
     func save() {
         guard let data = try? JSONEncoder().encode(settings) else { return }
         try? data.write(to: fileURL)
+        onSettingsChanged?()
     }
 
     func updateLockTime(_ time: String) {
@@ -45,6 +48,21 @@ class SettingsManager {
 
     func updateWarningMinutes(_ minutes: Int) {
         settings.warningMinutes = minutes
+        save()
+    }
+
+    func togglePreventSleep() {
+        settings.preventSleepEnabled.toggle()
+        save()
+    }
+
+    func toggleLockEnabled() {
+        settings.lockEnabled.toggle()
+        save()
+    }
+
+    func updateForcedBreakMinutes(_ minutes: Int) {
+        settings.forcedBreakMinutes = minutes
         save()
     }
 }

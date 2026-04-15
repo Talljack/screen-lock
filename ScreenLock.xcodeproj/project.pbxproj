@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		29EF30BA86C58F3AE0243529 /* LockScreenWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A24F9A95645E65F602029C92 /* LockScreenWindow.swift */; };
 		2E0FB9A08B403A60D865E523 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 224620A3ACCC748750DE9BD2 /* AppDelegate.swift */; };
 		6E73528D17C376692C3665B0 /* PowerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E164D348AF6352C229EA94E /* PowerManager.swift */; };
 		82602EA760C962BE40B0EFFF /* SettingsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E8503FDBB31062C90E8EB4A /* SettingsManager.swift */; };
@@ -26,6 +27,7 @@
 		6F9BCA41C8E95F09794E8341 /* ScreenManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenManager.swift; sourceTree = "<group>"; };
 		8E8503FDBB31062C90E8EB4A /* SettingsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsManager.swift; sourceTree = "<group>"; };
 		99415A6CCAEA954E67626DDC /* ScheduleManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleManager.swift; sourceTree = "<group>"; };
+		A24F9A95645E65F602029C92 /* LockScreenWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockScreenWindow.swift; sourceTree = "<group>"; };
 		D369C1853BA1B6421CBABAEE /* ScreenLock.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ScreenLock.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F4D719924486EE43172436FF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -90,6 +92,7 @@
 		EB42B68980191B023BC07E40 /* Controllers */ = {
 			isa = PBXGroup;
 			children = (
+				A24F9A95645E65F602029C92 /* LockScreenWindow.swift */,
 				5D731EE8B787E42BC4C00A49 /* MenuBarController.swift */,
 			);
 			path = Controllers;
@@ -147,6 +150,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2E0FB9A08B403A60D865E523 /* AppDelegate.swift in Sources */,
+				29EF30BA86C58F3AE0243529 /* LockScreenWindow.swift in Sources */,
 				F20D9B93DBE2737DEE4FC528 /* MenuBarController.swift in Sources */,
 				6E73528D17C376692C3665B0 /* PowerManager.swift in Sources */,
 				DE6B19646B915BE7E53C40C0 /* ScheduleManager.swift in Sources */,

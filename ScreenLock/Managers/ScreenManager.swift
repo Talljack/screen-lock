@@ -10,6 +10,7 @@ class ScreenManager {
 
     private var isDimming = false
     private var dimmingTimer: Timer?
+    private var lockWindow: LockScreenWindow?
 
     private init() {
         saveOriginalGamma()
@@ -83,24 +84,20 @@ class ScreenManager {
     }
 
     func lockScreenAndTurnOffDisplay() {
-        print("ScreenManager: Locking screen and turning off display")
+        print("ScreenManager: Showing forced break screen")
 
-        // Lock screen
-        let task = Process()
-        task.launchPath = "/System/Library/CoreServices/Menu Extras/User.menu/Contents/Resources/CGSession"
-        task.arguments = ["-suspend"]
-        task.launch()
-
-        // Turn off display (using pmset)
-        let displayOffTask = Process()
-        displayOffTask.launchPath = "/usr/bin/pmset"
-        displayOffTask.arguments = ["displaysleepnow"]
-        displayOffTask.launch()
+        // Restore gamma before showing lock screen
+        restoreOriginalGamma()
 
         // Reset dimming state
         isDimming = false
         dimmingTimer?.invalidate()
         dimmingTimer = nil
+
+        // Show full-screen lock window
+        let settings = SettingsManager.shared.settings
+        lockWindow = LockScreenWindow(durationMinutes: settings.forcedBreakMinutes)
+        lockWindow?.makeKeyAndOrderFront(nil)
     }
 
     func restoreOriginalGamma() {

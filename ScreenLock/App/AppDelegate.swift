@@ -14,10 +14,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSLog("Lock time: \(settings.lockTime)")
         NSLog("Warning: \(settings.warningMinutes) minutes")
 
-        // Enable prevent sleep
-        if settings.preventSleepEnabled {
-            PowerManager.shared.enablePreventSleep()
-            NSLog("Prevent sleep enabled")
+        // Enable prevent sleep if needed
+        updatePreventSleep(settings.preventSleepEnabled)
+
+        // Listen for settings changes
+        SettingsManager.shared.onSettingsChanged = { [weak self] in
+            self?.handleSettingsChanged()
         }
 
         // Start schedule manager
@@ -34,5 +36,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         PowerManager.shared.disablePreventSleep()
         ScreenManager.shared.restoreOriginalGamma()
         print("ScreenLock terminated")
+    }
+
+    private func handleSettingsChanged() {
+        let settings = SettingsManager.shared.settings
+        updatePreventSleep(settings.preventSleepEnabled)
+        ScheduleManager.shared.checkSchedule()
+    }
+
+    private func updatePreventSleep(_ enabled: Bool) {
+        if enabled {
+            PowerManager.shared.enablePreventSleep()
+            NSLog("Prevent sleep enabled")
+        } else {
+            PowerManager.shared.disablePreventSleep()
+            NSLog("Prevent sleep disabled")
+        }
     }
 }

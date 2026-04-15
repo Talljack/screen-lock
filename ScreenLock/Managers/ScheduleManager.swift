@@ -36,8 +36,17 @@ class ScheduleManager {
         print("ScheduleManager: Stopped")
     }
 
-    private func checkSchedule() {
+    func checkSchedule() {
         let settings = SettingsManager.shared.settings
+
+        // If lock is disabled, stay in normal state
+        if !settings.lockEnabled {
+            if state != .normal {
+                transitionToNormal()
+            }
+            return
+        }
+
         let now = Date()
 
         guard let lockTime = parseTime(settings.lockTime) else {
@@ -116,6 +125,12 @@ class ScheduleManager {
 
     func getTimeUntilLock() -> String {
         let settings = SettingsManager.shared.settings
+
+        // If lock is disabled
+        if !settings.lockEnabled {
+            return "定时锁屏已禁用"
+        }
+
         guard let lockTime = parseTime(settings.lockTime) else {
             return "Invalid time"
         }
@@ -135,5 +150,9 @@ class ScheduleManager {
         } else {
             return "距离锁屏还有 \(minutes)分钟"
         }
+    }
+
+    func lockNow() {
+        transitionToLocked()
     }
 }
