@@ -20,3 +20,14 @@ targets:
       MACOSX_DEPLOYMENT_TARGET: "10.15"
       ENABLE_HARDENED_RUNTIME: NO
       CODE_SIGN_ENTITLEMENTS: ""
+  ScreenLockTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - Tests/ScreenLockTests
+    dependencies:
+      - target: ScreenLock
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.yugangcao.screenlock.tests
+      GENERATE_INFOPLIST_FILE: YES
+      MACOSX_DEPLOYMENT_TARGET: "10.15"

@@ -1,4 +1,7 @@
 import Cocoa
+import os.log
+
+private let log = OSLog(subsystem: "com.yugangcao.screenlock", category: "Schedule")
 
 enum ScheduleState {
     case normal
@@ -17,23 +20,21 @@ class ScheduleManager {
     private init() {}
 
     func start() {
-        stop() // Clear any existing timer
+        stop()
 
-        // Check every minute
         timer = Timer.scheduledTimer(withTimeInterval: 60.0, repeats: true) { [weak self] _ in
             self?.checkSchedule()
         }
+        RunLoop.current.add(timer!, forMode: .common)
 
-        // Also check immediately
         checkSchedule()
-
-        print("ScheduleManager: Started")
+        os_log("Started", log: log, type: .info)
     }
 
     func stop() {
         timer?.invalidate()
         timer = nil
-        print("ScheduleManager: Stopped")
+        os_log("Stopped", log: log, type: .info)
     }
 
     func checkSchedule() {
@@ -41,6 +42,7 @@ class ScheduleManager {
 
         if !settings.lockEnabled {
             if state != .normal {
+                ScreenManager.shared.cancelDimming()
                 transitionToNormal()
             }
             return
@@ -48,60 +50,83 @@ class ScheduleManager {
 
         let now = Date()
 
-        guard let lockTime = nextOccurrence(of: settings.lockTime, after: now) else {
-            print("ScheduleManager: Invalid lock time format")
+        guard let todayLock = todayOccurrence(of: settings.lockTime, relativeTo: now) else {
+            os_log("Invalid lock time format", log: log, type: .error)
             return
         }
 
-        let warningTime = lockTime.addingTimeInterval(-Double(settings.warningMinutes) * 60)
+        let warningStart = todayLock.addingTimeInterval(-Double(settings.warningMinutes) * 60)
 
-        if now >= lockTime {
+        // Grace window: within 2 minutes after lock time, still trigger lock.
+        let graceEnd = todayLock.addingTimeInterval(120)
+
+        if now >= todayLock && now < graceEnd {
             if state != .locked {
                 transitionToLocked()
             }
-        } else if now >= warningTime {
+        } else if now >= warningStart && now < todayLock {
             if state != .warning {
                 transitionToWarning(durationMinutes: settings.warningMinutes)
             }
         } else {
             if state != .normal {
+                ScreenManager.shared.cancelDimming()
                 transitionToNormal()
             }
         }
     }
 
-    /// Returns the next occurrence of `timeString` (HH:mm) that is still in the
-    /// future relative to `referenceDate`. When the time has already passed today
-    /// the result rolls to tomorrow, keeping warningTime (derived by subtracting
-    /// minutes from this result) on the correct calendar day.
-    private func nextOccurrence(of timeString: String, after referenceDate: Date) -> Date? {
+    /// Returns today's occurrence of `timeString` (HH:mm) regardless of whether
+    /// it has passed. Used for range-based schedule comparison.
+    private func todayOccurrence(of timeString: String, relativeTo now: Date) -> Date? {
         let parts = timeString.split(separator: ":").compactMap { Int($0) }
-        guard parts.count == 2 else { return nil }
+        guard parts.count == 2,
+              (0...23).contains(parts[0]),
+              (0...59).contains(parts[1]) else { return nil }
 
         let cal = Calendar.current
-        var dc = cal.dateComponents([.year, .month, .day], from: referenceDate)
+        var dc = cal.dateComponents([.year, .month, .day], from: now)
         dc.hour = parts[0]
         dc.minute = parts[1]
         dc.second = 0
 
-        guard var target = cal.date(from: dc) else { return nil }
+        guard let target = cal.date(from: dc) else { return nil }
 
-        if target <= referenceDate {
-            target = cal.date(byAdding: .day, value: 1, to: target)!
+        // For times in the small hours (0:00–5:59), if current time is in the
+        // evening (18:00+), this means the lock is "tonight" = tomorrow calendar day.
+        if parts[0] < 6 && cal.component(.hour, from: now) >= 18 {
+            return cal.date(byAdding: .day, value: 1, to: target)
+        }
+
+        // For evening times, if we're past the grace window, roll to tomorrow
+        // so getTimeUntilLock shows the next occurrence.
+        let graceEnd = target.addingTimeInterval(120)
+        if now >= graceEnd && parts[0] >= 18 {
+            return cal.date(byAdding: .day, value: 1, to: target)
         }
 
         return target
     }
 
+    /// Used for countdown display — always returns a future lock time.
+    private func nextLockTime(for settings: Settings, now: Date) -> Date? {
+        guard let today = todayOccurrence(of: settings.lockTime, relativeTo: now) else { return nil }
+        let graceEnd = today.addingTimeInterval(120)
+        if now >= graceEnd {
+            return Calendar.current.date(byAdding: .day, value: 1, to: today)
+        }
+        return today
+    }
+
     private func transitionToNormal() {
         state = .normal
-        print("ScheduleManager: State -> Normal")
+        os_log("State -> Normal", log: log, type: .info)
         onStateChange?(.normal)
     }
 
     private func transitionToWarning(durationMinutes: Int) {
         state = .warning
-        print("ScheduleManager: State -> Warning")
+        os_log("State -> Warning", log: log, type: .info)
         NSSound(named: "Tink")?.play()
         ScreenManager.shared.startGradualDimming(durationMinutes: durationMinutes)
         onStateChange?(.warning)
@@ -109,7 +134,7 @@ class ScheduleManager {
 
     private func transitionToLocked() {
         state = .locked
-        print("ScheduleManager: State -> Locked")
+        os_log("State -> Locked", log: log, type: .info)
         ScreenManager.shared.lockScreenAndTurnOffDisplay { [weak self] in
             DispatchQueue.main.async {
                 self?.transitionToNormal()
@@ -126,7 +151,7 @@ class ScheduleManager {
         }
 
         let now = Date()
-        guard let lockTime = nextOccurrence(of: settings.lockTime, after: now) else {
+        guard let lockTime = nextLockTime(for: settings, now: now) else {
             return "时间格式错误"
         }
 

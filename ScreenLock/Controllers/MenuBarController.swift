@@ -1,5 +1,10 @@
 import Cocoa
+import Carbon.HIToolbox
 import ServiceManagement
+import UniformTypeIdentifiers
+import os.log
+
+private let log = OSLog(subsystem: "com.yugangcao.screenlock", category: "MenuBar")
 
 class MenuBarController {
     private let presetBreakDurations = [1, 5, 10, 15, 20, 30]
@@ -10,6 +15,7 @@ class MenuBarController {
 
     private var countdownMenuItem: NSMenuItem?
     private var statusIndicatorItem: NSMenuItem?
+    private var apiStatusItem: NSMenuItem?
     private var lockTimeMenuItems: [NSMenuItem] = []
     private var customLockTimeItem: NSMenuItem?
     private var warningMenuItems: [NSMenuItem] = []
@@ -21,20 +27,23 @@ class MenuBarController {
     private var preventSleepItem: NSMenuItem?
     private var lockEnabledItem: NSMenuItem?
     private var autoStartItem: NSMenuItem?
+    private var globalHotkeyRef: EventHotKeyRef?
 
     private var currentState: ScheduleState = .normal
 
     init() {
-        NSLog("MenuBarController init started")
         setupMenuBar()
-        NSLog("Menu bar setup complete")
         setupStateObserver()
         startRefreshTimer()
+        registerGlobalHotkey()
+        syncAutoStartState()
         updateUI()
+        os_log("MenuBarController initialized", log: log, type: .info)
     }
 
     deinit {
         refreshTimer?.invalidate()
+        unregisterGlobalHotkey()
     }
 
     private func setupMenuBar() {
@@ -106,6 +115,19 @@ class MenuBarController {
         }
 
         menu?.addItem(.separator())
+
+        apiStatusItem = NSMenuItem()
+        apiStatusItem?.isEnabled = false
+        apiStatusItem?.isHidden = true
+        menu?.addItem(apiStatusItem!)
+
+        let aboutItem = NSMenuItem(
+            title: "  关于 ScreenLock",
+            action: #selector(showAbout(_:)),
+            keyEquivalent: ""
+        )
+        aboutItem.target = self
+        menu?.addItem(aboutItem)
 
         let quitItem = NSMenuItem(
             title: "  退出",
@@ -258,9 +280,11 @@ class MenuBarController {
 
     private func startRefreshTimer() {
         refreshTimer?.invalidate()
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: 60.0, repeats: true) { [weak self] _ in
+        // Refresh every 30 seconds for a more responsive countdown display
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { [weak self] _ in
             self?.updateUI()
         }
+        RunLoop.current.add(refreshTimer!, forMode: .common)
     }
 
     private func updateUI() {
@@ -323,6 +347,20 @@ class MenuBarController {
         preventSleepItem?.state = settings.preventSleepEnabled ? .on : .off
         lockEnabledItem?.state = settings.lockEnabled ? .on : .off
         autoStartItem?.state = settings.autoStartEnabled ? .on : .off
+
+        // Show API degradation status
+        let warnings = [
+            ScreenManager.shared.statusMessage,
+            PowerManager.shared.statusMessage,
+        ].compactMap { $0 }
+        if warnings.isEmpty {
+            apiStatusItem?.isHidden = true
+        } else {
+            apiStatusItem?.isHidden = false
+            apiStatusItem?.attributedTitle = createStatusAttributedString(
+                "⚠️ " + warnings.joined(separator: " / ")
+            )
+        }
     }
 
     private func configureButtonForState(_ state: ScheduleState) {
@@ -511,7 +549,11 @@ class MenuBarController {
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
-        panel.allowedFileTypes = ["png", "jpg", "jpeg", "heic", "webp"]
+        if #available(macOS 12.0, *) {
+            panel.allowedContentTypes = [.png, .jpeg, .heic, .webP]
+        } else {
+            panel.allowedFileTypes = ["png", "jpg", "jpeg", "heic", "webp"]
+        }
         panel.prompt = "选择背景图"
 
         NSApp.activate(ignoringOtherApps: true)
@@ -655,7 +697,78 @@ class MenuBarController {
         performFeedback()
     }
 
+    @objc private func showAbout(_ sender: NSMenuItem) {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+
+        let alert = NSAlert()
+        alert.messageText = "ScreenLock"
+        alert.informativeText = """
+            版本 \(version) (\(build))
+
+            可爱的定时锁屏助手，帮你养成健康的睡眠习惯。
+
+            全局快捷键：⌃⌥⌘L 立即锁屏
+            """
+        alert.addButton(withTitle: "好的")
+        NSApp.activate(ignoringOtherApps: true)
+        alert.runModal()
+    }
+
     @objc private func quit(_ sender: NSMenuItem) {
         NSApplication.shared.terminate(nil)
+    }
+
+    // MARK: - Global Hotkey (Ctrl+Option+Cmd+L)
+
+    private func registerGlobalHotkey() {
+        var hotKeyID = EventHotKeyID()
+        hotKeyID.signature = OSType(0x534C4B21) // "SLK!"
+        hotKeyID.id = 1
+
+        // kVK_ANSI_L = 0x25
+        let modifiers: UInt32 = UInt32(cmdKey | optionKey | controlKey)
+        var ref: EventHotKeyRef?
+
+        let status = RegisterEventHotKey(
+            UInt32(kVK_ANSI_L), modifiers,
+            hotKeyID, GetApplicationEventTarget(), 0, &ref
+        )
+
+        if status == noErr {
+            globalHotkeyRef = ref
+            os_log("Global hotkey registered: Ctrl+Opt+Cmd+L", log: log, type: .info)
+
+            var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
+            InstallEventHandler(GetApplicationEventTarget(), { _, event, _ -> OSStatus in
+                ScheduleManager.shared.lockNow()
+                return noErr
+            }, 1, &eventType, nil, nil)
+        } else {
+            os_log("Failed to register global hotkey: %d", log: log, type: .error, status)
+        }
+    }
+
+    private func unregisterGlobalHotkey() {
+        if let ref = globalHotkeyRef {
+            UnregisterEventHotKey(ref)
+            globalHotkeyRef = nil
+        }
+    }
+
+    // MARK: - Auto-Start Sync
+
+    private func syncAutoStartState() {
+        if #available(macOS 13.0, *) {
+            let systemStatus = SMAppService.mainApp.status
+            let settingsEnabled = SettingsManager.shared.settings.autoStartEnabled
+            let actuallyEnabled = (systemStatus == .enabled)
+
+            if settingsEnabled != actuallyEnabled {
+                SettingsManager.shared.updateAutoStart(actuallyEnabled)
+                os_log("Synced auto-start state: %{public}@", log: log, type: .info,
+                       actuallyEnabled ? "enabled" : "disabled")
+            }
+        }
     }
 }

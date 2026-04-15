@@ -1,16 +1,17 @@
 import Cocoa
+import os.log
+
+private let log = OSLog(subsystem: "com.yugangcao.screenlock", category: "App")
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var menuBarController: MenuBarController?
 
-    func applicationWillFinishLaunching(_ notification: Notification) {
-        NSLog("applicationWillFinishLaunching called")
-    }
+    func applicationWillFinishLaunching(_ notification: Notification) {}
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
-        NSLog("applicationDidFinishLaunching called")
         let settings = SettingsManager.shared.settings
-        NSLog("ScreenLock started — lock time: \(settings.lockTime), warning: \(settings.warningMinutes)min")
+        os_log("ScreenLock started — lock: %{public}@, warning: %d min",
+               log: log, type: .info, settings.lockTime, settings.warningMinutes)
 
         updatePreventSleep(settings.preventSleepEnabled)
 
@@ -28,7 +29,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         ScheduleManager.shared.stop()
         PowerManager.shared.disablePreventSleep()
         ScreenManager.shared.restoreOriginalGamma()
-        NSLog("ScreenLock terminated")
+        os_log("ScreenLock terminated", log: log, type: .info)
     }
 
     private func handleSettingsChanged() {

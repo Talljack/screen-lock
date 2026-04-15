@@ -1,5 +1,8 @@
 import Cocoa
 import CoreGraphics
+import os.log
+
+private let log = OSLog(subsystem: "com.yugangcao.screenlock", category: "Screen")
 
 class ScreenManager {
     static let shared = ScreenManager()
@@ -20,8 +23,22 @@ class ScreenManager {
     private var isSystemLockTriggered = false
     private var lockCompletion: (() -> Void)?
 
+    /// Tracks whether any API capability is degraded.
+    private(set) var statusMessage: String?
+
     private init() {
         saveOriginalGamma()
+        observeDisplayChanges()
+    }
+
+    private func observeDisplayChanges() {
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification,
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            os_log("Display configuration changed — refreshing gamma map", log: log, type: .info)
+            self?.saveOriginalGamma()
+        }
     }
 
     private func activeDisplayIDs() -> [CGDirectDisplayID] {
@@ -50,7 +67,11 @@ class ScreenManager {
                 &blueMin, &blueMax, &blueGamma
             )
 
-            guard result == .success else { continue }
+            guard result == .success else {
+                os_log("Failed to read gamma for display %{public}d", log: log, type: .error, display)
+                statusMessage = "屏幕控制功能不可用"
+                continue
+            }
 
             originalGammaByDisplay[display] = (
                 red: (redMin, redMax, redGamma),
@@ -59,7 +80,7 @@ class ScreenManager {
             )
         }
 
-        print("ScreenManager: Original gamma saved")
+        os_log("Gamma saved for %d displays", log: log, type: .info, originalGammaByDisplay.count)
     }
 
     func startGradualDimming(durationMinutes: Int) {
@@ -67,15 +88,14 @@ class ScreenManager {
         isDimming = true
         saveOriginalGamma()
 
-        print("ScreenManager: Starting gradual dimming over \(durationMinutes) minutes")
+        os_log("Starting gradual dimming over %d minutes", log: log, type: .info, durationMinutes)
 
-        let steps = max(durationMinutes * 2, 1) // Every 30 seconds
+        let steps = max(durationMinutes * 2, 1)
         var currentStep = 0
 
         dimmingTimer = Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { [weak self] timer in
             currentStep += 1
             let progress = Float(currentStep) / Float(steps)
-
             self?.applyDimmingAndWarmth(progress: progress)
 
             if currentStep >= steps {
@@ -83,6 +103,16 @@ class ScreenManager {
                 self?.dimmingTimer = nil
             }
         }
+    }
+
+    /// Stops dimming and restores original gamma. Safe to call even when not dimming.
+    func cancelDimming() {
+        guard isDimming else { return }
+        isDimming = false
+        dimmingTimer?.invalidate()
+        dimmingTimer = nil
+        restoreOriginalGamma()
+        os_log("Dimming cancelled and gamma restored", log: log, type: .info)
     }
 
     private func applyDimmingAndWarmth(progress: Float) {
@@ -104,7 +134,7 @@ class ScreenManager {
     }
 
     func lockScreenAndTurnOffDisplay(completion: (() -> Void)? = nil) {
-        print("ScreenManager: Showing forced break screen")
+        os_log("Showing forced break screen", log: log, type: .info)
 
         restoreOriginalGamma()
         isDimming = false
@@ -133,8 +163,6 @@ class ScreenManager {
         }
 
         NSApp.activate(ignoringOtherApps: true)
-
-        // Make the first window key to capture keyboard events
         lockWindows.first?.makeKeyAndOrderFront(nil)
 
         startLockCountdown()
@@ -183,9 +211,10 @@ class ScreenManager {
 
         do {
             try task.run()
-            print("ScreenManager: macOS system lock triggered")
+            os_log("macOS system lock triggered", log: log, type: .info)
         } catch {
-            print("ScreenManager: Failed to trigger macOS system lock: \(error)")
+            os_log("Failed to trigger system lock: %{public}@", log: log, type: .error, error.localizedDescription)
+            statusMessage = "系统锁屏功能不可用"
         }
     }
 
@@ -213,6 +242,6 @@ class ScreenManager {
             )
         }
 
-        print("ScreenManager: Original gamma restored")
+        os_log("Original gamma restored", log: log, type: .info)
     }
 }

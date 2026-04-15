@@ -12,6 +12,7 @@
 		29EF30BA86C58F3AE0243529 /* LockScreenWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A24F9A95645E65F602029C92 /* LockScreenWindow.swift */; };
 		2E0FB9A08B403A60D865E523 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 224620A3ACCC748750DE9BD2 /* AppDelegate.swift */; };
 		6BEE89BB81EDA8BCCEC242CD /* SettingsDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB7F16F0452494FC3C7FF95B /* SettingsDecodingTests.swift */; };
+		BB112233445566778899AABB /* ScheduleLogicTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB112233445566778899AA00 /* ScheduleLogicTests.swift */; };
 		6E73528D17C376692C3665B0 /* PowerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E164D348AF6352C229EA94E /* PowerManager.swift */; };
 		82602EA760C962BE40B0EFFF /* SettingsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E8503FDBB31062C90E8EB4A /* SettingsManager.swift */; };
 		B8FE6D5BA0E64FC2F79439DA /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34C11DD2F6830F70D5F559F7 /* main.swift */; };
@@ -44,6 +45,7 @@
 		99415A6CCAEA954E67626DDC /* ScheduleManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleManager.swift; sourceTree = "<group>"; };
 		A24F9A95645E65F602029C92 /* LockScreenWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockScreenWindow.swift; sourceTree = "<group>"; };
 		D369C1853BA1B6421CBABAEE /* ScreenLock.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ScreenLock.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB112233445566778899AA00 /* ScheduleLogicTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleLogicTests.swift; sourceTree = "<group>"; };
 		EB7F16F0452494FC3C7FF95B /* SettingsDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsDecodingTests.swift; sourceTree = "<group>"; };
 		F4D719924486EE43172436FF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		AA1122334455667788990011 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -64,6 +66,7 @@
 		45656C071B6EE30C56423AD5 /* ScreenLockTests */ = {
 			isa = PBXGroup;
 			children = (
+				BB112233445566778899AA00 /* ScheduleLogicTests.swift */,
 				EB7F16F0452494FC3C7FF95B /* SettingsDecodingTests.swift */,
 			);
 			name = ScreenLockTests;
@@ -225,6 +228,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BB112233445566778899AABB /* ScheduleLogicTests.swift in Sources */,
 				6BEE89BB81EDA8BCCEC242CD /* SettingsDecodingTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
