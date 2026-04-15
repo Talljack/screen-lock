@@ -1,4 +1,4 @@
-import Foundation
+import Cocoa
 
 enum ScheduleState {
     case normal
@@ -39,7 +39,6 @@ class ScheduleManager {
     func checkSchedule() {
         let settings = SettingsManager.shared.settings
 
-        // If lock is disabled, stay in normal state
         if !settings.lockEnabled {
             if state != .normal {
                 transitionToNormal()
@@ -49,18 +48,13 @@ class ScheduleManager {
 
         let now = Date()
 
-        guard let lockTime = parseTime(settings.lockTime) else {
+        guard let lockTime = nextOccurrence(of: settings.lockTime, after: now) else {
             print("ScheduleManager: Invalid lock time format")
             return
         }
 
-        let warningTime = Calendar.current.date(
-            byAdding: .minute,
-            value: -settings.warningMinutes,
-            to: lockTime
-        )!
+        let warningTime = lockTime.addingTimeInterval(-Double(settings.warningMinutes) * 60)
 
-        // Determine state
         if now >= lockTime {
             if state != .locked {
                 transitionToLocked()
@@ -76,26 +70,27 @@ class ScheduleManager {
         }
     }
 
-    private func parseTime(_ timeString: String) -> Date? {
-        let components = timeString.split(separator: ":").compactMap { Int($0) }
-        guard components.count == 2 else { return nil }
+    /// Returns the next occurrence of `timeString` (HH:mm) that is still in the
+    /// future relative to `referenceDate`. When the time has already passed today
+    /// the result rolls to tomorrow, keeping warningTime (derived by subtracting
+    /// minutes from this result) on the correct calendar day.
+    private func nextOccurrence(of timeString: String, after referenceDate: Date) -> Date? {
+        let parts = timeString.split(separator: ":").compactMap { Int($0) }
+        guard parts.count == 2 else { return nil }
 
-        let hour = components[0]
-        let minute = components[1]
+        let cal = Calendar.current
+        var dc = cal.dateComponents([.year, .month, .day], from: referenceDate)
+        dc.hour = parts[0]
+        dc.minute = parts[1]
+        dc.second = 0
 
-        var dateComponents = Calendar.current.dateComponents([.year, .month, .day], from: Date())
-        dateComponents.hour = hour
-        dateComponents.minute = minute
-        dateComponents.second = 0
+        guard var target = cal.date(from: dc) else { return nil }
 
-        guard var targetDate = Calendar.current.date(from: dateComponents) else { return nil }
-
-        // If target time has passed today, schedule for tomorrow
-        if targetDate < Date() {
-            targetDate = Calendar.current.date(byAdding: .day, value: 1, to: targetDate)!
+        if target <= referenceDate {
+            target = cal.date(byAdding: .day, value: 1, to: target)!
         }
 
-        return targetDate
+        return target
     }
 
     private func transitionToNormal() {
@@ -107,6 +102,7 @@ class ScheduleManager {
     private func transitionToWarning(durationMinutes: Int) {
         state = .warning
         print("ScheduleManager: State -> Warning")
+        NSSound(named: "Tink")?.play()
         ScreenManager.shared.startGradualDimming(durationMinutes: durationMinutes)
         onStateChange?(.warning)
     }
@@ -114,30 +110,27 @@ class ScheduleManager {
     private func transitionToLocked() {
         state = .locked
         print("ScheduleManager: State -> Locked")
-        ScreenManager.shared.lockScreenAndTurnOffDisplay()
-        onStateChange?(.locked)
-
-        // Reset to normal after lock (for next day)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
-            self?.transitionToNormal()
+        ScreenManager.shared.lockScreenAndTurnOffDisplay { [weak self] in
+            DispatchQueue.main.async {
+                self?.transitionToNormal()
+            }
         }
+        onStateChange?(.locked)
     }
 
     func getTimeUntilLock() -> String {
         let settings = SettingsManager.shared.settings
 
-        // If lock is disabled
         if !settings.lockEnabled {
             return "定时锁屏已禁用"
         }
 
-        guard let lockTime = parseTime(settings.lockTime) else {
-            return "Invalid time"
+        let now = Date()
+        guard let lockTime = nextOccurrence(of: settings.lockTime, after: now) else {
+            return "时间格式错误"
         }
 
-        let now = Date()
         let interval = lockTime.timeIntervalSince(now)
-
         if interval < 0 {
             return "已过锁屏时间"
         }

@@ -1,16 +1,26 @@
 import Cocoa
+import ServiceManagement
 
 class MenuBarController {
+    private let presetBreakDurations = [1, 5, 10, 15, 20, 30]
+
     private var statusItem: NSStatusItem?
     private var menu: NSMenu?
+    private var refreshTimer: Timer?
 
     private var countdownMenuItem: NSMenuItem?
     private var statusIndicatorItem: NSMenuItem?
     private var lockTimeMenuItems: [NSMenuItem] = []
+    private var customLockTimeItem: NSMenuItem?
     private var warningMenuItems: [NSMenuItem] = []
     private var breakDurationMenuItems: [NSMenuItem] = []
+    private var customBreakDurationItem: NSMenuItem?
+    private var themeMenuItems: [NSMenuItem] = []
+    private var backgroundStatusItem: NSMenuItem?
+    private var clearBackgroundItem: NSMenuItem?
     private var preventSleepItem: NSMenuItem?
     private var lockEnabledItem: NSMenuItem?
+    private var autoStartItem: NSMenuItem?
 
     private var currentState: ScheduleState = .normal
 
@@ -19,115 +29,56 @@ class MenuBarController {
         setupMenuBar()
         NSLog("Menu bar setup complete")
         setupStateObserver()
+        startRefreshTimer()
         updateUI()
     }
 
+    deinit {
+        refreshTimer?.invalidate()
+    }
+
     private func setupMenuBar() {
-        NSLog("Creating status item...")
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem?.isVisible = true
-        NSLog("Status item created: \(statusItem != nil)")
 
-        // Set initial icon
         if let button = statusItem?.button {
             configureButtonForState(.normal)
             button.toolTip = "ScreenLock - 定时锁屏助手"
-            NSLog("Button configured")
         }
 
         menu = NSMenu()
-        menu?.minimumWidth = 280
+        menu?.minimumWidth = 320
 
-        // Header with countdown (larger, prominent)
         countdownMenuItem = NSMenuItem()
         countdownMenuItem?.attributedTitle = createCountdownAttributedString("加载中...")
         countdownMenuItem?.isEnabled = false
         menu?.addItem(countdownMenuItem!)
 
-        // Status indicator (subtle, secondary info)
         statusIndicatorItem = NSMenuItem()
         statusIndicatorItem?.attributedTitle = createStatusAttributedString("正常运行")
         statusIndicatorItem?.isEnabled = false
         menu?.addItem(statusIndicatorItem!)
 
-        menu?.addItem(NSMenuItem.separator())
+        menu?.addItem(.separator())
 
-        // Section: 锁屏时间
-        let lockTimeSectionItem = NSMenuItem()
-        lockTimeSectionItem.attributedTitle = createSectionHeaderAttributedString("锁屏时间")
-        lockTimeSectionItem.isEnabled = false
-        menu?.addItem(lockTimeSectionItem)
+        addLockTimeSection()
+        menu?.addItem(.separator())
 
-        let times = ["22:00", "23:00", "00:00", "01:00", "02:00"]
-        for time in times {
-            let item = NSMenuItem(
-                title: "  \(time)",
-                action: #selector(lockTimeSelected(_:)),
-                keyEquivalent: ""
-            )
-            item.target = self
-            item.representedObject = time
-            lockTimeMenuItems.append(item)
-            menu?.addItem(item)
-        }
+        addWarningSection()
+        menu?.addItem(.separator())
 
-        // Lock now option
-        let lockNowItem = NSMenuItem(
-            title: "  立即锁屏",
-            action: #selector(lockNow(_:)),
-            keyEquivalent: ""
-        )
-        lockNowItem.target = self
-        if #available(macOS 11.0, *) {
-            lockNowItem.image = NSImage(systemSymbolName: "lock.fill", accessibilityDescription: nil)
-        }
-        menu?.addItem(lockNowItem)
+        addBreakDurationSection()
+        menu?.addItem(.separator())
 
-        menu?.addItem(NSMenuItem.separator())
+        addThemeSection()
+        menu?.addItem(.separator())
 
-        // Section: 提前警告
-        let warningSectionItem = NSMenuItem()
-        warningSectionItem.attributedTitle = createSectionHeaderAttributedString("提前警告")
-        warningSectionItem.isEnabled = false
-        menu?.addItem(warningSectionItem)
+        addBackgroundSection()
+        menu?.addItem(.separator())
 
-        let durations = [15, 30, 45, 60]
-        for duration in durations {
-            let item = NSMenuItem(
-                title: "  \(duration) 分钟",
-                action: #selector(warningDurationSelected(_:)),
-                keyEquivalent: ""
-            )
-            item.target = self
-            item.representedObject = duration
-            warningMenuItems.append(item)
-            menu?.addItem(item)
-        }
+        addCopySection()
+        menu?.addItem(.separator())
 
-        menu?.addItem(NSMenuItem.separator())
-
-        // Section: 强制休息时长
-        let breakDurationSectionItem = NSMenuItem()
-        breakDurationSectionItem.attributedTitle = createSectionHeaderAttributedString("强制休息时长")
-        breakDurationSectionItem.isEnabled = false
-        menu?.addItem(breakDurationSectionItem)
-
-        let breakDurations = [5, 10, 15, 20, 30]
-        for duration in breakDurations {
-            let item = NSMenuItem(
-                title: "  \(duration) 分钟",
-                action: #selector(breakDurationSelected(_:)),
-                keyEquivalent: ""
-            )
-            item.target = self
-            item.representedObject = duration
-            breakDurationMenuItems.append(item)
-            menu?.addItem(item)
-        }
-
-        menu?.addItem(NSMenuItem.separator())
-
-        // Prevent sleep toggle
         preventSleepItem = NSMenuItem(
             title: "  合盖不休眠",
             action: #selector(togglePreventSleep(_:)),
@@ -136,7 +87,6 @@ class MenuBarController {
         preventSleepItem?.target = self
         menu?.addItem(preventSleepItem!)
 
-        // Lock enabled toggle
         lockEnabledItem = NSMenuItem(
             title: "  启用定时锁屏",
             action: #selector(toggleLockEnabled(_:)),
@@ -145,9 +95,18 @@ class MenuBarController {
         lockEnabledItem?.target = self
         menu?.addItem(lockEnabledItem!)
 
-        menu?.addItem(NSMenuItem.separator())
+        if #available(macOS 13.0, *) {
+            autoStartItem = NSMenuItem(
+                title: "  开机自启动",
+                action: #selector(toggleAutoStart(_:)),
+                keyEquivalent: ""
+            )
+            autoStartItem?.target = self
+            menu?.addItem(autoStartItem!)
+        }
 
-        // Quit with icon
+        menu?.addItem(.separator())
+
         let quitItem = NSMenuItem(
             title: "  退出",
             action: #selector(quit(_:)),
@@ -162,6 +121,133 @@ class MenuBarController {
         statusItem?.menu = menu
     }
 
+    private func addLockTimeSection() {
+        menu?.addItem(makeSectionHeader("锁屏时间"))
+
+        for time in ["22:00", "23:00", "00:00", "01:00", "02:00"] {
+            let item = NSMenuItem(title: "  \(time)", action: #selector(lockTimeSelected(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = time
+            lockTimeMenuItems.append(item)
+            menu?.addItem(item)
+        }
+
+        customLockTimeItem = NSMenuItem(
+            title: "  自定义时间...",
+            action: #selector(customLockTimeSelected(_:)),
+            keyEquivalent: ""
+        )
+        customLockTimeItem?.target = self
+        menu?.addItem(customLockTimeItem!)
+
+        let lockNowItem = NSMenuItem(title: "  立即锁屏", action: #selector(lockNow(_:)), keyEquivalent: "")
+        lockNowItem.target = self
+        if #available(macOS 11.0, *) {
+            lockNowItem.image = NSImage(systemSymbolName: "lock.fill", accessibilityDescription: nil)
+        }
+        menu?.addItem(lockNowItem)
+    }
+
+    private func addWarningSection() {
+        menu?.addItem(makeSectionHeader("提前警告"))
+
+        for duration in [15, 30, 45, 60] {
+            let item = NSMenuItem(
+                title: "  \(duration) 分钟",
+                action: #selector(warningDurationSelected(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            item.representedObject = duration
+            warningMenuItems.append(item)
+            menu?.addItem(item)
+        }
+    }
+
+    private func addBreakDurationSection() {
+        menu?.addItem(makeSectionHeader("强制休息时长"))
+
+        for duration in presetBreakDurations {
+            let item = NSMenuItem(
+                title: "  \(duration) 分钟",
+                action: #selector(breakDurationSelected(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            item.representedObject = duration
+            breakDurationMenuItems.append(item)
+            menu?.addItem(item)
+        }
+
+        customBreakDurationItem = NSMenuItem(
+            title: "  自定义...",
+            action: #selector(customBreakDurationSelected(_:)),
+            keyEquivalent: ""
+        )
+        customBreakDurationItem?.target = self
+        menu?.addItem(customBreakDurationItem!)
+    }
+
+    private func addThemeSection() {
+        menu?.addItem(makeSectionHeader("可爱风格"))
+
+        for theme in LockScreenTheme.allCases {
+            let item = NSMenuItem(
+                title: "  \(theme.displayName)",
+                action: #selector(themeSelected(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            item.representedObject = theme.rawValue
+            themeMenuItems.append(item)
+            menu?.addItem(item)
+        }
+    }
+
+    private func addBackgroundSection() {
+        menu?.addItem(makeSectionHeader("背景图"))
+
+        backgroundStatusItem = NSMenuItem()
+        backgroundStatusItem?.isEnabled = false
+        menu?.addItem(backgroundStatusItem!)
+
+        let chooseItem = NSMenuItem(
+            title: "  选择背景图...",
+            action: #selector(chooseBackgroundImage(_:)),
+            keyEquivalent: ""
+        )
+        chooseItem.target = self
+        menu?.addItem(chooseItem)
+
+        clearBackgroundItem = NSMenuItem(
+            title: "  使用主题渐变背景",
+            action: #selector(clearBackgroundImage(_:)),
+            keyEquivalent: ""
+        )
+        clearBackgroundItem?.target = self
+        menu?.addItem(clearBackgroundItem!)
+    }
+
+    private func addCopySection() {
+        menu?.addItem(makeSectionHeader("提示文案"))
+
+        let editItem = NSMenuItem(
+            title: "  编辑锁屏文案...",
+            action: #selector(editLockScreenCopy(_:)),
+            keyEquivalent: ""
+        )
+        editItem.target = self
+        menu?.addItem(editItem)
+
+        let resetItem = NSMenuItem(
+            title: "  恢复默认风格与文案",
+            action: #selector(resetLockScreenAppearance(_:)),
+            keyEquivalent: ""
+        )
+        resetItem.target = self
+        menu?.addItem(resetItem)
+    }
+
     private func setupStateObserver() {
         ScheduleManager.shared.onStateChange = { [weak self] state in
             self?.currentState = state
@@ -170,43 +256,73 @@ class MenuBarController {
         }
     }
 
+    private func startRefreshTimer() {
+        refreshTimer?.invalidate()
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: 60.0, repeats: true) { [weak self] _ in
+            self?.updateUI()
+        }
+    }
+
     private func updateUI() {
-        let countdown = ScheduleManager.shared.getTimeUntilLock()
-        countdownMenuItem?.attributedTitle = createCountdownAttributedString(countdown)
+        countdownMenuItem?.attributedTitle = createCountdownAttributedString(
+            ScheduleManager.shared.getTimeUntilLock()
+        )
 
-        let settings = SettingsManager.shared.settings
+        let settings = SettingsManager.shared.settings.validated()
 
-        // Update checkmarks for lock time
+        let presetTimes = ["22:00", "23:00", "00:00", "01:00", "02:00"]
+        let isCustomTime = !presetTimes.contains(settings.lockTime)
+
         for item in lockTimeMenuItems {
             if let time = item.representedObject as? String {
                 item.state = (time == settings.lockTime) ? .on : .off
             }
         }
 
-        // Update checkmarks for warning duration
+        customLockTimeItem?.state = isCustomTime ? .on : .off
+        customLockTimeItem?.title = isCustomTime
+            ? "  自定义时间 (\(settings.lockTime))"
+            : "  自定义时间..."
+
         for item in warningMenuItems {
             if let duration = item.representedObject as? Int {
                 item.state = (duration == settings.warningMinutes) ? .on : .off
             }
         }
 
-        // Update checkmarks for break duration
         for item in breakDurationMenuItems {
             if let duration = item.representedObject as? Int {
                 item.state = (duration == settings.forcedBreakMinutes) ? .on : .off
             }
         }
 
-        // Update prevent sleep toggle
-        preventSleepItem?.state = settings.preventSleepEnabled ? .on : .off
+        let isCustomBreak = !presetBreakDurations.contains(settings.forcedBreakMinutes)
+        customBreakDurationItem?.state = isCustomBreak ? .on : .off
+        customBreakDurationItem?.title = isCustomBreak
+            ? "  自定义 (\(settings.forcedBreakMinutes) 分钟)"
+            : "  自定义..."
 
-        // Update lock enabled toggle
-        lockEnabledItem?.state = settings.lockEnabled ? .on : .off
-
-        // Update every minute
-        DispatchQueue.main.asyncAfter(deadline: .now() + 60) { [weak self] in
-            self?.updateUI()
+        for item in themeMenuItems {
+            if let rawValue = item.representedObject as? String {
+                item.state = (rawValue == settings.appearance.theme.rawValue) ? .on : .off
+            }
         }
+
+        if let path = settings.appearance.backgroundImagePath, !path.isEmpty {
+            backgroundStatusItem?.attributedTitle = createStatusAttributedString(
+                "当前背景：\(URL(fileURLWithPath: path).lastPathComponent)"
+            )
+            clearBackgroundItem?.isEnabled = true
+            clearBackgroundItem?.title = "  使用主题动态背景"
+        } else {
+            backgroundStatusItem?.attributedTitle = createStatusAttributedString("当前背景：主题动态背景")
+            clearBackgroundItem?.isEnabled = false
+            clearBackgroundItem?.title = "  使用主题动态背景"
+        }
+
+        preventSleepItem?.state = settings.preventSleepEnabled ? .on : .off
+        lockEnabledItem?.state = settings.lockEnabled ? .on : .off
+        autoStartItem?.state = settings.autoStartEnabled ? .on : .off
     }
 
     private func configureButtonForState(_ state: ScheduleState) {
@@ -214,32 +330,28 @@ class MenuBarController {
 
         if #available(macOS 11.0, *) {
             let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
-            var symbolName: String
+            let symbolName: String
 
             switch state {
             case .normal:
                 symbolName = "moon.stars.fill"
             case .warning:
-                symbolName = "exclamationmark.triangle.fill"
+                symbolName = "sparkles"
             case .locked:
                 symbolName = "lock.fill"
             }
 
             if let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil) {
-                let configuredImage = image.withSymbolConfiguration(config)
-                button.image = configuredImage
+                button.image = image.withSymbolConfiguration(config)
                 button.title = ""
-
-                // Set tint color based on state
                 button.contentTintColor = colorForState(state)
             }
         } else {
-            // Fallback for older macOS
             switch state {
             case .normal:
                 button.title = "🌙"
             case .warning:
-                button.title = "⚠️"
+                button.title = "✨"
             case .locked:
                 button.title = "🔒"
             }
@@ -256,9 +368,9 @@ class MenuBarController {
         case .normal:
             statusText = "正常运行"
         case .warning:
-            statusText = "即将锁屏"
+            statusText = "可爱提醒已开始"
         case .locked:
-            statusText = "已锁定"
+            statusText = "强制休息中"
         }
         statusIndicatorItem?.attributedTitle = createStatusAttributedString(statusText)
     }
@@ -268,122 +380,279 @@ class MenuBarController {
         case .normal:
             return NSColor.systemTeal
         case .warning:
-            return NSColor.systemOrange
+            return NSColor.systemPink
         case .locked:
-            return NSColor.systemRed
+            return NSColor.systemOrange
         }
     }
 
-    // MARK: - Attributed String Helpers
+    private func makeSectionHeader(_ text: String) -> NSMenuItem {
+        let item = NSMenuItem()
+        item.attributedTitle = createSectionHeaderAttributedString(text)
+        item.isEnabled = false
+        return item
+    }
 
     private func createCountdownAttributedString(_ text: String) -> NSAttributedString {
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.alignment = .center
         paragraphStyle.lineSpacing = 2
 
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 13, weight: .semibold),
-            .foregroundColor: NSColor.labelColor,
-            .paragraphStyle: paragraphStyle
-        ]
-
-        return NSAttributedString(string: text, attributes: attributes)
+        return NSAttributedString(
+            string: text,
+            attributes: [
+                .font: NSFont.systemFont(ofSize: 13, weight: .semibold),
+                .foregroundColor: NSColor.labelColor,
+                .paragraphStyle: paragraphStyle
+            ]
+        )
     }
 
     private func createStatusAttributedString(_ text: String) -> NSAttributedString {
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.alignment = .center
 
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 11, weight: .regular),
-            .foregroundColor: NSColor.secondaryLabelColor,
-            .paragraphStyle: paragraphStyle
-        ]
-
-        return NSAttributedString(string: text, attributes: attributes)
+        return NSAttributedString(
+            string: text,
+            attributes: [
+                .font: NSFont.systemFont(ofSize: 11, weight: .regular),
+                .foregroundColor: NSColor.secondaryLabelColor,
+                .paragraphStyle: paragraphStyle
+            ]
+        )
     }
 
     private func createSectionHeaderAttributedString(_ text: String) -> NSAttributedString {
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 11, weight: .medium),
-            .foregroundColor: NSColor.secondaryLabelColor
-        ]
-
-        return NSAttributedString(string: "  \(text)", attributes: attributes)
+        NSAttributedString(
+            string: "  \(text)",
+            attributes: [
+                .font: NSFont.systemFont(ofSize: 11, weight: .medium),
+                .foregroundColor: NSColor.secondaryLabelColor
+            ]
+        )
     }
 
-    // MARK: - Actions
+    private func performFeedback() {
+        if #available(macOS 10.14, *) {
+            NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .default)
+        }
+    }
+
+    private func promptForPositiveInteger(
+        title: String,
+        message: String,
+        initialValue: Int
+    ) -> Int? {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.addButton(withTitle: "保存")
+        alert.addButton(withTitle: "取消")
+
+        let field = NSTextField(string: "\(initialValue)")
+        field.placeholderString = "请输入分钟数"
+        field.frame = NSRect(x: 0, y: 0, width: 220, height: 24)
+        alert.accessoryView = field
+
+        NSApp.activate(ignoringOtherApps: true)
+        let response = alert.runModal()
+        guard response == .alertFirstButtonReturn else { return nil }
+
+        let value = Int(field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+        return value > 0 ? value : nil
+    }
 
     @objc private func lockTimeSelected(_ sender: NSMenuItem) {
         guard let time = sender.representedObject as? String else { return }
         SettingsManager.shared.updateLockTime(time)
         updateUI()
-
-        // Provide haptic feedback (if available)
-        if #available(macOS 10.14, *) {
-            NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .default)
-        }
-
-        print("Lock time updated to: \(time)")
+        performFeedback()
     }
 
     @objc private func warningDurationSelected(_ sender: NSMenuItem) {
         guard let duration = sender.representedObject as? Int else { return }
         SettingsManager.shared.updateWarningMinutes(duration)
         updateUI()
-
-        // Provide haptic feedback (if available)
-        if #available(macOS 10.14, *) {
-            NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .default)
-        }
-
-        print("Warning duration updated to: \(duration) minutes")
+        performFeedback()
     }
 
     @objc private func breakDurationSelected(_ sender: NSMenuItem) {
         guard let duration = sender.representedObject as? Int else { return }
         SettingsManager.shared.updateForcedBreakMinutes(duration)
         updateUI()
+        performFeedback()
+    }
 
-        if #available(macOS 10.14, *) {
-            NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .default)
+    @objc private func customBreakDurationSelected(_ sender: NSMenuItem) {
+        guard let minutes = promptForPositiveInteger(
+            title: "自定义强制休息时长",
+            message: "输入你想要的分钟数，测试时可以设为 1 分钟。",
+            initialValue: SettingsManager.shared.settings.forcedBreakMinutes
+        ) else { return }
+
+        SettingsManager.shared.updateForcedBreakMinutes(minutes)
+        updateUI()
+        performFeedback()
+    }
+
+    @objc private func themeSelected(_ sender: NSMenuItem) {
+        guard let rawValue = sender.representedObject as? String,
+              let theme = LockScreenTheme(rawValue: rawValue) else {
+            return
         }
 
-        print("Break duration updated to: \(duration) minutes")
+        SettingsManager.shared.updateLockScreenThemeAndResetCopy(theme)
+        updateUI()
+        performFeedback()
+    }
+
+    @objc private func chooseBackgroundImage(_ sender: NSMenuItem) {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedFileTypes = ["png", "jpg", "jpeg", "heic", "webp"]
+        panel.prompt = "选择背景图"
+
+        NSApp.activate(ignoringOtherApps: true)
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        SettingsManager.shared.updateBackgroundImagePath(url.path)
+        updateUI()
+        performFeedback()
+    }
+
+    @objc private func clearBackgroundImage(_ sender: NSMenuItem) {
+        SettingsManager.shared.updateBackgroundImagePath(nil)
+        updateUI()
+        performFeedback()
+    }
+
+    @objc private func editLockScreenCopy(_ sender: NSMenuItem) {
+        let appearance = SettingsManager.shared.settings.appearance
+
+        let titleField = NSTextField(string: appearance.titleText)
+        titleField.placeholderString = "标题"
+
+        let subtitleField = NSTextField(string: appearance.subtitleText)
+        subtitleField.placeholderString = "副标题"
+
+        let footerField = NSTextField(string: appearance.footerText)
+        footerField.placeholderString = "底部提示"
+
+        let stack = NSStackView(views: [
+            labeledField(title: "标题", field: titleField),
+            labeledField(title: "副标题", field: subtitleField),
+            labeledField(title: "底部提示", field: footerField)
+        ])
+        stack.orientation = .vertical
+        stack.spacing = 10
+
+        let alert = NSAlert()
+        alert.messageText = "编辑锁屏文案"
+        alert.informativeText = "可以自由改成更可爱的提醒语。"
+        alert.addButton(withTitle: "保存")
+        alert.addButton(withTitle: "取消")
+        alert.accessoryView = stack
+
+        NSApp.activate(ignoringOtherApps: true)
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        SettingsManager.shared.updateLockScreenCopy(
+            title: titleField.stringValue,
+            subtitle: subtitleField.stringValue,
+            footer: footerField.stringValue
+        )
+        SettingsManager.shared.markCopyAsCustom()
+        updateUI()
+        performFeedback()
+    }
+
+    private func labeledField(title: String, field: NSTextField) -> NSView {
+        let label = NSTextField(labelWithString: title)
+        label.font = NSFont.systemFont(ofSize: 12, weight: .medium)
+
+        let container = NSStackView(views: [label, field])
+        container.orientation = .vertical
+        container.spacing = 4
+        return container
+    }
+
+    @objc private func resetLockScreenAppearance(_ sender: NSMenuItem) {
+        SettingsManager.shared.resetCopyToThemeDefault()
+        updateUI()
+        performFeedback()
     }
 
     @objc private func togglePreventSleep(_ sender: NSMenuItem) {
         SettingsManager.shared.togglePreventSleep()
         updateUI()
-
-        if #available(macOS 10.14, *) {
-            NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .default)
-        }
-
-        let enabled = SettingsManager.shared.settings.preventSleepEnabled
-        print("Prevent sleep: \(enabled ? "enabled" : "disabled")")
+        performFeedback()
     }
 
     @objc private func toggleLockEnabled(_ sender: NSMenuItem) {
         SettingsManager.shared.toggleLockEnabled()
         updateUI()
+        performFeedback()
+    }
 
-        if #available(macOS 10.14, *) {
-            NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .default)
+    @objc private func customLockTimeSelected(_ sender: NSMenuItem) {
+        let alert = NSAlert()
+        alert.messageText = "自定义锁屏时间"
+        alert.informativeText = "输入 24 小时制时间，格式：HH:mm（例如 23:30）"
+        alert.addButton(withTitle: "保存")
+        alert.addButton(withTitle: "取消")
+
+        let field = NSTextField(string: SettingsManager.shared.settings.lockTime)
+        field.placeholderString = "HH:mm"
+        field.frame = NSRect(x: 0, y: 0, width: 220, height: 24)
+        alert.accessoryView = field
+
+        NSApp.activate(ignoringOtherApps: true)
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        let input = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let parts = input.split(separator: ":").compactMap { Int($0) }
+        guard parts.count == 2, (0...23).contains(parts[0]), (0...59).contains(parts[1]) else {
+            let err = NSAlert()
+            err.messageText = "时间格式错误"
+            err.informativeText = "请输入有效的 HH:mm 格式，例如 23:30"
+            err.runModal()
+            return
         }
 
-        let enabled = SettingsManager.shared.settings.lockEnabled
-        print("Lock enabled: \(enabled ? "enabled" : "disabled")")
+        let formatted = String(format: "%02d:%02d", parts[0], parts[1])
+        SettingsManager.shared.updateLockTime(formatted)
+        updateUI()
+        performFeedback()
     }
 
     @objc private func lockNow(_ sender: NSMenuItem) {
         ScheduleManager.shared.lockNow()
+        performFeedback()
+    }
 
-        if #available(macOS 10.14, *) {
-            NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .default)
+    @available(macOS 13.0, *)
+    @objc private func toggleAutoStart(_ sender: NSMenuItem) {
+        let settings = SettingsManager.shared.settings
+        let newValue = !settings.autoStartEnabled
+
+        do {
+            if newValue {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+            SettingsManager.shared.updateAutoStart(newValue)
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = "设置开机自启动失败"
+            alert.informativeText = error.localizedDescription
+            alert.runModal()
         }
 
-        print("Locking screen now")
+        updateUI()
+        performFeedback()
     }
 
     @objc private func quit(_ sender: NSMenuItem) {
