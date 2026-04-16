@@ -11,7 +11,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     override init() {
         self.updaterController = SPUStandardUpdaterController(
-            startingUpdater: true,
+            startingUpdater: false,
             updaterDelegate: nil,
             userDriverDelegate: nil
         )

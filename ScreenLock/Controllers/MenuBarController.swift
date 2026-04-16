@@ -1082,12 +1082,7 @@ class MenuBarController {
 
     @objc private func checkForUpdates(_ sender: NSMenuItem) {
         NSApp.activate(ignoringOtherApps: true)
-
-        if updater.canCheckForUpdates {
-            updater.checkForUpdates()
-        } else {
-            checkForUpdatesViaGitHub()
-        }
+        checkForUpdatesViaGitHub()
     }
 
     private func checkForUpdatesViaGitHub() {
@@ -1100,70 +1095,79 @@ class MenuBarController {
         request.setValue("application/vnd.github.v3+json", forHTTPHeaderField: "Accept")
         request.timeoutInterval = 10
 
-        URLSession.shared.dataTask(with: request) { data, _, error in
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             DispatchQueue.main.async {
+                let appIcon = NSApp.applicationIconImage
+
                 if let error = error {
-                    let alert = NSAlert()
-                    alert.messageText = "检查更新失败"
-                    alert.informativeText = "无法连接到更新服务器：\(error.localizedDescription)"
-                    alert.addButton(withTitle: "好的")
-                    NSApp.activate(ignoringOtherApps: true)
-                    alert.runModal()
+                    self?.showUpdateAlert(
+                        title: "检查更新失败",
+                        message: "无法连接到更新服务器：\(error.localizedDescription)",
+                        icon: appIcon,
+                        primaryButton: "好的"
+                    )
                     return
                 }
 
-                guard let data = data,
+                let httpStatus = (response as? HTTPURLResponse)?.statusCode ?? 0
+
+                guard let data = data, httpStatus == 200,
                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                       let tagName = json["tag_name"] as? String else {
-                    let alert = NSAlert()
-                    alert.messageText = "当前已是最新版本"
-                    alert.informativeText = "ScreenLock \(currentVersion) 是最新版本。"
-                    if let appIcon = NSApp.applicationIconImage {
-                        alert.icon = appIcon
-                    }
-                    alert.addButton(withTitle: "好的")
-                    NSApp.activate(ignoringOtherApps: true)
-                    alert.runModal()
+                    self?.showUpdateAlert(
+                        title: "当前已是最新版本",
+                        message: "ScreenLock v\(currentVersion) 已是最新版本。",
+                        icon: appIcon,
+                        primaryButton: "好的"
+                    )
                     return
                 }
 
                 let latestVersion = tagName.hasPrefix("v") ? String(tagName.dropFirst()) : tagName
-                let releaseNotes = json["body"] as? String ?? ""
+                let releaseNotes = json["body"] as? String ?? "暂无更新说明"
                 let htmlURL = json["html_url"] as? String ?? ""
 
                 if latestVersion.compare(currentVersion, options: .numeric) == .orderedDescending {
                     let alert = NSAlert()
-                    alert.messageText = "发现新版本 v\(latestVersion)"
+                    alert.messageText = "发现新版本 v\(latestVersion) 🎉"
                     alert.informativeText = """
-                        当前版本：\(currentVersion)
-                        最新版本：\(latestVersion)
+                        当前版本：v\(currentVersion)
+                        最新版本：v\(latestVersion)
 
-                        \(releaseNotes.prefix(300))
+                        更新日志：
+                        \(String(releaseNotes.prefix(500)))
                         """
-                    if let appIcon = NSApp.applicationIconImage {
-                        alert.icon = appIcon
-                    }
-                    alert.addButton(withTitle: "前往下载")
+                    alert.icon = appIcon
+                    alert.addButton(withTitle: "立即更新")
                     alert.addButton(withTitle: "稍后再说")
                     NSApp.activate(ignoringOtherApps: true)
-                    let response = alert.runModal()
+                    let resp = alert.runModal()
 
-                    if response == .alertFirstButtonReturn, let url = URL(string: htmlURL) {
-                        NSWorkspace.shared.open(url)
+                    if resp == .alertFirstButtonReturn {
+                        if let downloadURL = URL(string: htmlURL) {
+                            NSWorkspace.shared.open(downloadURL)
+                        }
                     }
                 } else {
-                    let alert = NSAlert()
-                    alert.messageText = "当前已是最新版本"
-                    alert.informativeText = "ScreenLock \(currentVersion) 是最新版本。"
-                    if let appIcon = NSApp.applicationIconImage {
-                        alert.icon = appIcon
-                    }
-                    alert.addButton(withTitle: "好的")
-                    NSApp.activate(ignoringOtherApps: true)
-                    alert.runModal()
+                    self?.showUpdateAlert(
+                        title: "当前已是最新版本",
+                        message: "ScreenLock v\(currentVersion) 已是最新版本。",
+                        icon: appIcon,
+                        primaryButton: "好的"
+                    )
                 }
             }
         }.resume()
+    }
+
+    private func showUpdateAlert(title: String, message: String, icon: NSImage?, primaryButton: String) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.icon = icon
+        alert.addButton(withTitle: primaryButton)
+        NSApp.activate(ignoringOtherApps: true)
+        alert.runModal()
     }
 
     @objc private func clearStats(_ sender: NSMenuItem) {
