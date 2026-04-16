@@ -98,16 +98,24 @@ struct LockScreenAppearance: Codable, Equatable {
     func validated() -> LockScreenAppearance {
         var a = self
 
-        a.titleText = a.titleText.trimmingCharacters(in: .whitespacesAndNewlines)
-        a.subtitleText = a.subtitleText.trimmingCharacters(in: .whitespacesAndNewlines)
-        a.footerText = a.footerText.trimmingCharacters(in: .whitespacesAndNewlines)
         a.backgroundImagePath = a.backgroundImagePath?.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        let fallback = theme.defaultCopy
-        if a.titleText.isEmpty { a.titleText = fallback.title }
-        if a.subtitleText.isEmpty { a.subtitleText = fallback.subtitle }
-        if a.footerText.isEmpty { a.footerText = fallback.footer }
         if a.backgroundImagePath?.isEmpty == true { a.backgroundImagePath = nil }
+
+        if !a.isCustomCopy {
+            let copy = theme.defaultCopy
+            a.titleText = copy.title
+            a.subtitleText = copy.subtitle
+            a.footerText = copy.footer
+        } else {
+            a.titleText = a.titleText.trimmingCharacters(in: .whitespacesAndNewlines)
+            a.subtitleText = a.subtitleText.trimmingCharacters(in: .whitespacesAndNewlines)
+            a.footerText = a.footerText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            let fallback = theme.defaultCopy
+            if a.titleText.isEmpty { a.titleText = fallback.title }
+            if a.subtitleText.isEmpty { a.subtitleText = fallback.subtitle }
+            if a.footerText.isEmpty { a.footerText = fallback.footer }
+        }
 
         return a
     }
