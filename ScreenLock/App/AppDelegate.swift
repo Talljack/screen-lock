@@ -1,4 +1,5 @@
 import Cocoa
+import UserNotifications
 import os.log
 
 private let log = OSLog(subsystem: "com.yugangcao.screenlock", category: "App")
@@ -15,12 +16,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         updatePreventSleep(settings.preventSleepEnabled)
 
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, _ in
+            os_log("Notification permission: %{public}@", log: log, type: .info, granted ? "granted" : "denied")
+        }
+
         SettingsManager.shared.onSettingsChanged = { [weak self] in
             self?.handleSettingsChanged()
         }
 
         ScheduleManager.shared.start()
         menuBarController = MenuBarController()
+
+        StatsManager.shared.onNewAchievement = { achievement in
+            DispatchQueue.main.async {
+                let alert = NSAlert()
+                alert.messageText = "\(achievement.emoji) 成就解锁！"
+                alert.informativeText = "\(achievement.title) — \(achievement.description)"
+                alert.addButton(withTitle: "太棒了！")
+                NSApp.activate(ignoringOtherApps: true)
+                alert.runModal()
+            }
+        }
 
         showPermissionGuideIfNeeded()
     }

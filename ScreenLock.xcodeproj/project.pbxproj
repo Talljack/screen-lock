@@ -9,6 +9,9 @@
 /* Begin PBXBuildFile section */
 		1A2B3C4D5E6F7A8B9C0D1E2F /* DynamicBackgroundView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F7A8B9C0D1E20 /* DynamicBackgroundView.swift */; };
 		AA1122334455667788990022 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA1122334455667788990011 /* Assets.xcassets */; };
+		CC1122334455667788990011 /* LockEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC1122334455667788990001 /* LockEvent.swift */; };
+		CC1122334455667788990022 /* StatsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC1122334455667788990002 /* StatsManager.swift */; };
+		CC1122334455667788990033 /* StatsWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC1122334455667788990003 /* StatsWindow.swift */; };
 		29EF30BA86C58F3AE0243529 /* LockScreenWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A24F9A95645E65F602029C92 /* LockScreenWindow.swift */; };
 		2E0FB9A08B403A60D865E523 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 224620A3ACCC748750DE9BD2 /* AppDelegate.swift */; };
 		6BEE89BB81EDA8BCCEC242CD /* SettingsDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB7F16F0452494FC3C7FF95B /* SettingsDecodingTests.swift */; };
@@ -49,6 +52,9 @@
 		EB7F16F0452494FC3C7FF95B /* SettingsDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsDecodingTests.swift; sourceTree = "<group>"; };
 		F4D719924486EE43172436FF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		AA1122334455667788990011 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		CC1122334455667788990001 /* LockEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockEvent.swift; sourceTree = "<group>"; };
+		CC1122334455667788990002 /* StatsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsManager.swift; sourceTree = "<group>"; };
+		CC1122334455667788990003 /* StatsWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsWindow.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -105,6 +111,7 @@
 		83BBA3B1DE11D153D024A5BC /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				CC1122334455667788990001 /* LockEvent.swift */,
 				5EA0B563CF8DA04589CE44D3 /* Settings.swift */,
 			);
 			path = Models;
@@ -117,6 +124,7 @@
 				99415A6CCAEA954E67626DDC /* ScheduleManager.swift */,
 				6F9BCA41C8E95F09794E8341 /* ScreenManager.swift */,
 				8E8503FDBB31062C90E8EB4A /* SettingsManager.swift */,
+				CC1122334455667788990002 /* StatsManager.swift */,
 			);
 			path = Managers;
 			sourceTree = "<group>";
@@ -127,6 +135,7 @@
 				1A2B3C4D5E6F7A8B9C0D1E20 /* DynamicBackgroundView.swift */,
 				A24F9A95645E65F602029C92 /* LockScreenWindow.swift */,
 				5D731EE8B787E42BC4C00A49 /* MenuBarController.swift */,
+				CC1122334455667788990003 /* StatsWindow.swift */,
 			);
 			path = Controllers;
 			sourceTree = "<group>";
@@ -220,6 +229,9 @@
 				BD5B85CEF3C849FD6CB82EEB /* ScreenManager.swift in Sources */,
 				CF6C0C878B9CC19471C1F5A8 /* Settings.swift in Sources */,
 				82602EA760C962BE40B0EFFF /* SettingsManager.swift in Sources */,
+				CC1122334455667788990011 /* LockEvent.swift in Sources */,
+				CC1122334455667788990022 /* StatsManager.swift in Sources */,
+				CC1122334455667788990033 /* StatsWindow.swift in Sources */,
 				B8FE6D5BA0E64FC2F79439DA /* main.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

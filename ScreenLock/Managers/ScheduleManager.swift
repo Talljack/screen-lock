@@ -1,4 +1,5 @@
 import Cocoa
+import UserNotifications
 import os.log
 
 private let log = OSLog(subsystem: "com.yugangcao.screenlock", category: "Schedule")
@@ -129,7 +130,26 @@ class ScheduleManager {
         os_log("State -> Warning", log: log, type: .info)
         NSSound(named: "Tink")?.play()
         ScreenManager.shared.startGradualDimming(durationMinutes: durationMinutes)
+        sendWarningNotification(minutesLeft: durationMinutes)
         onStateChange?(.warning)
+    }
+
+    private func sendWarningNotification(minutesLeft: Int) {
+        let content = UNMutableNotificationContent()
+        content.title = "该准备休息啦 🌙"
+        content.body = "还有 \(minutesLeft) 分钟就要锁屏了，快保存工作吧~"
+        content.sound = .default
+
+        let request = UNNotificationRequest(
+            identifier: "screenlock-warning",
+            content: content,
+            trigger: nil
+        )
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                os_log("Failed to send notification: %{public}@", log: log, type: .error, error.localizedDescription)
+            }
+        }
     }
 
     private func transitionToLocked() {

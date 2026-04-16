@@ -196,6 +196,16 @@ class ScreenManager {
         guard !isSystemLockTriggered else { return }
         isSystemLockTriggered = true
 
+        let settings = SettingsManager.shared.settings
+        let event = LockEvent(
+            date: Date(),
+            lockTime: settings.lockTime,
+            trigger: (ScheduleManager.shared.state == .locked) ? .scheduled : .manual,
+            breakDurationSeconds: settings.forcedBreakMinutes * 60,
+            completed: true
+        )
+        StatsManager.shared.record(event: event)
+
         closeLockWindows(force: true)
         performSystemLock()
         lockCompletion?()
