@@ -153,10 +153,16 @@ jobs:
           prerelease: false
 
       - name: Push updated appcast.xml
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git stash
+          git fetch origin main
           git checkout main
+          git stash pop || true
+          cp appcast.xml . 2>/dev/null || true
           git add appcast.xml
           git diff --cached --quiet || git commit -m "chore: update appcast.xml for ${{ steps.version.outputs.tag }}"
-          git push origin main
+          git push https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git main
