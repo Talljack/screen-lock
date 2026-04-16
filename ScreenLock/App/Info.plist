@@ -23,7 +23,7 @@
 	<key>NSAppleEventsUsageDescription</key>
 	<string>ScreenLock needs permission to lock your screen at scheduled times.</string>
 	<key>SUFeedURL</key>
-	<string>https://raw.githubusercontent.com/yugangcao/screen-lock/main/appcast.xml</string>
+	<string>https://raw.githubusercontent.com/Talljack/screen-lock/main/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>t5BuJRYkalejaR25jPfscdJxwTOjZlETDCrpwpcTl80=</string>
 </dict>
