@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Resolve package dependencies
+        run: xcodebuild -project ScreenLock.xcodeproj -scheme ScreenLock -resolvePackageDependencies
+
+      - name: Build
+        run: |
+          xcodebuild -project ScreenLock.xcodeproj \
+            -scheme ScreenLock \
+            -configuration Debug \
+            -destination 'platform=macOS' \
+            build
+
+      - name: Test
+        run: |
+          xcodebuild -project ScreenLock.xcodeproj \
+            -scheme ScreenLockTests \
+            -configuration Debug \
+            -destination 'platform=macOS' \
+            test

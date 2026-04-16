@@ -1,11 +1,16 @@
 import Foundation
 import IOKit.pwr_mgt
+import os.log
+
+private let log = OSLog(subsystem: "com.yugangcao.screenlock", category: "Power")
 
 class PowerManager {
     static let shared = PowerManager()
 
     private var assertionID: IOPMAssertionID = 0
     private var isActive = false
+
+    private(set) var statusMessage: String?
 
     private init() {}
 
@@ -21,9 +26,11 @@ class PowerManager {
 
         if result == kIOReturnSuccess {
             isActive = true
-            print("PowerManager: Sleep prevention enabled")
+            statusMessage = nil
+            os_log("Sleep prevention enabled", log: log, type: .info)
         } else {
-            print("PowerManager: Failed to enable sleep prevention, error: \(result)")
+            statusMessage = L("status.sleep_unavailable")
+            os_log("Failed to enable sleep prevention, error: %d", log: log, type: .error, result)
         }
     }
 
@@ -35,9 +42,10 @@ class PowerManager {
         if result == kIOReturnSuccess {
             isActive = false
             assertionID = 0
-            print("PowerManager: Sleep prevention disabled")
+            statusMessage = nil
+            os_log("Sleep prevention disabled", log: log, type: .info)
         } else {
-            print("PowerManager: Failed to disable sleep prevention, error: \(result)")
+            os_log("Failed to disable sleep prevention, error: %d", log: log, type: .error, result)
         }
     }
 }

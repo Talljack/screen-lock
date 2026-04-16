@@ -1,0 +1,225 @@
+/* Menu Bar */
+"menu.title" = "ScreenLock - Scheduled Screen Lock";
+"menu.loading" = "Loading...";
+"menu.status.normal" = "Running";
+"menu.status.warning" = "Bedtime reminder active";
+"menu.status.locked" = "Break in progress";
+"menu.lock_toggle" = "Scheduled Lock";
+"menu.lock_now" = "Lock Now (⌥⌘L)";
+"menu.lock_time" = "Lock Time";
+"menu.warning" = "Early Warning";
+"menu.break_duration" = "Break Duration";
+"menu.appearance" = "Appearance";
+"menu.prevent_sleep" = "Prevent Sleep on Lid Close";
+"menu.auto_start" = "Launch at Login";
+"menu.stats" = "Sleep Statistics";
+"menu.export_csv" = "Export Stats (CSV)";
+"menu.clear_stats" = "Clear Stats Data...";
+"menu.check_update" = "Check for Updates...";
+"menu.about" = "About ScreenLock";
+"menu.quit" = "Quit";
+
+/* Menu - Current Values */
+"menu.lock_time.value" = "Lock Time: %@";
+"menu.warning.value" = "Warning: %d min";
+"menu.break.value" = "Break: %d min";
+"menu.appearance.value" = "Appearance: %@";
+"menu.custom_time" = "Custom Time...";
+"menu.custom_time.value" = "Custom Time (%@)";
+"menu.custom" = "Custom...";
+"menu.custom.value" = "Custom (%d min)";
+
+/* Menu - Appearance Submenu */
+"appearance.theme_section" = "Theme";
+"appearance.background_section" = "Background";
+"appearance.choose_bg" = "Choose Background...";
+"appearance.use_theme_bg" = "Use Theme Background";
+"appearance.clear_bg" = "Remove Background (Use Theme)";
+"appearance.current_bg" = "Current: %@";
+"appearance.current_theme_bg" = "Current: Theme Background";
+"appearance.copy_preview" = "Current Text Preview";
+"appearance.edit_copy" = "Edit Lock Screen Text...";
+"appearance.reset_copy" = "Reset to Default Text";
+"appearance.preview" = "Preview Lock Screen...";
+
+/* Themes */
+"theme.peachBunny" = "Peach Bunny";
+"theme.cloudPudding" = "Cloud Pudding";
+"theme.starlightCat" = "Starlight Cat";
+
+/* Units */
+"unit.minutes" = "%d min";
+"unit.minute_input" = "minutes";
+
+/* Common Buttons */
+"button.save" = "Save";
+"button.cancel" = "Cancel";
+"button.ok" = "OK";
+"button.confirm" = "Confirm";
+"button.clear" = "Clear";
+
+/* Copy Editor */
+"copy_editor.title" = "Edit Lock Screen Text";
+"copy_editor.subtitle" = "Customize the text shown during lock screen";
+"copy_editor.field.title" = "Title (Main Text)";
+"copy_editor.field.title_placeholder" = "e.g., Time to sleep~";
+"copy_editor.field.subtitle" = "Subtitle";
+"copy_editor.field.subtitle_placeholder" = "e.g., Early to bed, early to rise";
+"copy_editor.field.footer" = "Footer";
+"copy_editor.field.footer_placeholder" = "e.g., System lock screen will activate after break";
+"copy_editor.preview" = "Preview";
+
+/* Lock Screen Preview */
+"preview.title" = "Lock Screen Preview — %@";
+
+/* Custom Time Input */
+"custom_time.title" = "Custom Lock Time";
+"custom_time.message" = "Enter time in 24h format: HH:mm (e.g. 23:30)";
+"custom_time.error.title" = "Invalid Time Format";
+"custom_time.error.message" = "Please enter a valid HH:mm format, e.g. 23:30";
+"custom_time.placeholder" = "Enter minutes";
+
+/* Custom Warning */
+"custom_warning.title" = "Custom Warning Time";
+"custom_warning.message" = "How many minutes before lock? (1-120 min)";
+
+/* Custom Break */
+"custom_break.title" = "Custom Break Duration";
+"custom_break.message" = "Enter minutes. For testing, try 1 minute.";
+
+/* Background Image */
+"bg.choose_title" = "Choose Background Image";
+
+/* Clear Stats */
+"clear_stats.title" = "Clear all statistics?";
+"clear_stats.message" = "This will delete all lock records and achievements. This cannot be undone.";
+
+/* About */
+"about.version" = "Version %@";
+"about.description" = "A cute scheduled screen lock assistant for healthy sleep habits.";
+"about.hotkey" = "Global Hotkey: ⌥⌘L Lock Now";
+
+/* Auto Start */
+"autostart.error" = "Failed to set launch at login";
+
+/* Export */
+"export.error" = "Export failed";
+
+/* Update */
+"update.check_failed" = "Update Check Failed";
+"update.check_failed.message" = "Could not connect to update server: %@";
+"update.up_to_date" = "You're Up to Date";
+"update.up_to_date.message" = "ScreenLock v%@ is the latest version.";
+"update.new_version" = "New Version v%@ Available 🎉";
+"update.current_version" = "Current: v%@";
+"update.latest_version" = "Latest: v%@";
+"update.changelog" = "Changelog:";
+"update.no_notes" = "No release notes available";
+"update.install" = "Update Now";
+"update.later" = "Later";
+
+/* Permissions */
+"permission.title" = "Accessibility Permission Required";
+"permission.message" = "ScreenLock needs Accessibility permission to control screen brightness and lock.\n\nGo to: System Settings → Privacy & Security → Accessibility,\nfind ScreenLock and enable it.\n\nThe app will work normally once permission is granted.";
+"permission.open_settings" = "Open System Settings";
+"permission.later" = "Later";
+
+/* Achievement */
+"achievement.unlocked" = "%@ Achievement Unlocked!";
+"achievement.awesome" = "Awesome!";
+
+/* Achievements */
+"achievement.streak3.title" = "Sleep Beginner";
+"achievement.streak3.desc" = "3-day streak of on-time locks";
+"achievement.streak7.title" = "Sleep Guardian";
+"achievement.streak7.desc" = "7-day streak of on-time locks";
+"achievement.streak14.title" = "Routine Master";
+"achievement.streak14.desc" = "14-day streak of on-time locks";
+"achievement.streak30.title" = "Health Champion";
+"achievement.streak30.desc" = "30-day streak of on-time locks";
+"achievement.total10.title" = "Rising Star";
+"achievement.total10.desc" = "10 total screen locks";
+"achievement.total50.title" = "Consistent";
+"achievement.total50.desc" = "50 total screen locks";
+"achievement.total100.title" = "Moonlight Hero";
+"achievement.total100.desc" = "100 total screen locks";
+
+/* Stats Window */
+"stats.title" = "Sleep Statistics";
+"stats.chart_title" = "Lock Trend";
+"stats.7days" = "7 Days";
+"stats.30days" = "30 Days";
+"stats.achievements" = "Achievements";
+"stats.greeting.master" = "You're a sleep master!";
+"stats.greeting.great" = "Great job, keep it up!";
+"stats.greeting.good" = "Good start, stay consistent!";
+"stats.greeting.start" = "Start sleeping early tonight";
+"stats.journey" = "Your Sleep Journey";
+"stats.current_streak" = "Current Streak";
+"stats.longest_streak" = "Best Streak";
+"stats.total" = "Total Locks";
+"stats.avg_time" = "Average Time";
+"stats.days" = "%d days";
+"stats.zero_days" = "0 days";
+"stats.count" = "%d times";
+"stats.weekly" = "This vs Last Week";
+"stats.completion" = "Completion Rate";
+"stats.trigger_split" = "Auto / Manual";
+
+/* Schedule */
+"schedule.disabled" = "Scheduled lock disabled";
+"schedule.format_error" = "Time format error";
+"schedule.past_time" = "Past lock time";
+"schedule.countdown.hours" = "%dh %dm until lock";
+"schedule.countdown.minutes" = "%dm until lock";
+
+/* Warning Notification */
+"warning.notification.title" = "Time to get ready for bed 🌙";
+"warning.notification.body" = "%d minutes until screen lock, save your work~";
+
+/* Status Messages */
+"status.screen_unavailable" = "Screen control unavailable";
+"status.lock_unavailable" = "System lock unavailable";
+"status.sleep_unavailable" = "Lid close sleep prevention unavailable";
+
+/* Lock Screen Copy Sets - Peach Theme */
+"copy.peach.1.title" = "Time to Sleep~";
+"copy.peach.1.subtitle" = "You worked hard today, get some rest!";
+"copy.peach.1.footer" = "System lock screen activates after break 🔒";
+"copy.peach.2.title" = "Good Night 🌙";
+"copy.peach.2.subtitle" = "It's late, give your eyes a rest~";
+"copy.peach.2.footer" = "Early to bed, tomorrow will be better!";
+"copy.peach.3.title" = "Break Time!";
+"copy.peach.3.subtitle" = "Put down the phone, close your eyes and breathe~";
+"copy.peach.3.footer" = "Save your work and sleep peacefully 💤";
+"copy.peach.4.title" = "Shh… Bedtime";
+"copy.peach.4.subtitle" = "Even the bunnies are asleep, time for you too~";
+"copy.peach.4.footer" = "Tomorrow will be full of energy!";
+
+/* Lock Screen Copy Sets - Cloud Theme */
+"copy.cloud.1.title" = "Clouds Say Goodnight~";
+"copy.cloud.1.subtitle" = "Fluffy clouds are ready, come lie down!";
+"copy.cloud.1.footer" = "System lock screen activates after break 🔒";
+"copy.cloud.2.title" = "Time for a Break";
+"copy.cloud.2.subtitle" = "Let your mind float on clouds and relax~";
+"copy.cloud.2.footer" = "Good sleep is the best skincare!";
+"copy.cloud.3.title" = "Soft & Cozy Time~";
+"copy.cloud.3.subtitle" = "Today's worries can wait until tomorrow!";
+"copy.cloud.3.footer" = "Close your eyes and count sheep 🐑";
+"copy.cloud.4.title" = "Beautiful Night";
+"copy.cloud.4.subtitle" = "Stars are twinkling, time to say goodnight~";
+"copy.cloud.4.footer" = "Sweet dreams are on the way 📦";
+
+/* Lock Screen Copy Sets - Starlight Theme */
+"copy.star.1.title" = "Stars Guard Your Night ✨";
+"copy.star.1.subtitle" = "The galaxy has dimmed, time for you to rest~";
+"copy.star.1.footer" = "System lock screen activates after break 🔒";
+"copy.star.2.title" = "The Moon Has Risen";
+"copy.star.2.subtitle" = "The brightest star awaits your dreams~";
+"copy.star.2.footer" = "Sleep well, shine again tomorrow!";
+"copy.star.3.title" = "Goodnight, Stargazer";
+"copy.star.3.subtitle" = "Tonight's sky is beautiful, but you need rest~";
+"copy.star.3.footer" = "Dream of stars and oceans 🌊";
+"copy.star.4.title" = "The Universe Says Goodnight";
+"copy.star.4.subtitle" = "The quiet of night is the best gift for you~";
+"copy.star.4.footer" = "Relax and drift into sweet dreams 💫";

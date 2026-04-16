@@ -1,0 +1,151 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          echo "version=$TAG" >> "$GITHUB_OUTPUT"
+          echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+
+      - name: Set version in Info.plist
+        run: |
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${{ steps.version.outputs.version }}" \
+            ScreenLock/App/Info.plist
+          BUILD_NUMBER=$(echo "${{ steps.version.outputs.version }}" | tr -d '.')
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" \
+            ScreenLock/App/Info.plist
+
+      - name: Resolve package dependencies
+        run: xcodebuild -project ScreenLock.xcodeproj -scheme ScreenLock -resolvePackageDependencies
+
+      - name: Build Release archive
+        run: |
+          xcodebuild -project ScreenLock.xcodeproj \
+            -scheme ScreenLock \
+            -configuration Release \
+            -archivePath build/ScreenLock.xcarchive \
+            archive \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Export app from archive
+        run: |
+          mkdir -p build/export
+          cp -R build/ScreenLock.xcarchive/Products/Applications/ScreenLock.app build/export/
+
+      - name: Create zip
+        run: |
+          cd build/export
+          zip -r -y ScreenLock.zip ScreenLock.app
+          mv ScreenLock.zip ../
+
+      - name: Sign update with Sparkle
+        id: sign
+        env:
+          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+        run: |
+          if [ -z "$SPARKLE_ED_PRIVATE_KEY" ]; then
+            echo "signature=" >> "$GITHUB_OUTPUT"
+            echo "length=$(stat -f%z build/ScreenLock.zip)" >> "$GITHUB_OUTPUT"
+            echo "::warning::SPARKLE_ED_PRIVATE_KEY not set, skipping signature"
+          else
+            SPARKLE_SIGN=$(find /Users/runner/Library/Developer/Xcode/DerivedData -name "sign_update" -path "*/artifacts/*" | head -1)
+            if [ -z "$SPARKLE_SIGN" ]; then
+              echo "::warning::sign_update tool not found, skipping signature"
+              echo "signature=" >> "$GITHUB_OUTPUT"
+              echo "length=$(stat -f%z build/ScreenLock.zip)" >> "$GITHUB_OUTPUT"
+            else
+              RESULT=$("$SPARKLE_SIGN" build/ScreenLock.zip -f "$SPARKLE_ED_PRIVATE_KEY")
+              SIG=$(echo "$RESULT" | grep 'sparkle:edSignature=' | sed 's/.*sparkle:edSignature="\([^"]*\)".*/\1/')
+              LEN=$(echo "$RESULT" | grep 'length=' | sed 's/.*length="\([^"]*\)".*/\1/')
+              echo "signature=$SIG" >> "$GITHUB_OUTPUT"
+              echo "length=$LEN" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          cat > build/release_notes.md << 'NOTES_EOF'
+          ## ScreenLock ${{ steps.version.outputs.tag }}
+
+          ### Changes
+          See [commit history](https://github.com/${{ github.repository }}/compare/.../${{ steps.version.outputs.tag }}) for full details.
+
+          ### Install
+          1. Download `ScreenLock.zip` below
+          2. Unzip and move `ScreenLock.app` to `/Applications`
+          3. Launch — the app runs in the menu bar
+          NOTES_EOF
+
+      - name: Update appcast.xml
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="${{ steps.version.outputs.tag }}"
+          BUILD=$(echo "$VERSION" | tr -d '.')
+          SIG="${{ steps.sign.outputs.signature }}"
+          LEN="${{ steps.sign.outputs.length }}"
+          DATE=$(date -u "+%a, %d %b %Y %H:%M:%S +0000")
+          REPO="${{ github.repository }}"
+          URL="https://github.com/${REPO}/releases/download/${TAG}/ScreenLock.zip"
+
+          cat > appcast.xml << EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+              <channel>
+                  <title>ScreenLock Updates</title>
+                  <link>https://github.com/${REPO}/releases</link>
+                  <description>Most recent updates to ScreenLock</description>
+                  <language>zh-cn</language>
+
+                  <item>
+                      <title>Version ${VERSION}</title>
+                      <pubDate>${DATE}</pubDate>
+                      <sparkle:version>${BUILD}</sparkle:version>
+                      <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
+                      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+                      <enclosure url="${URL}"
+                                 type="application/octet-stream"
+                                 sparkle:edSignature="${SIG}"
+                                 length="${LEN}"/>
+                  </item>
+
+              </channel>
+          </rss>
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ScreenLock ${{ steps.version.outputs.tag }}
+          body_path: build/release_notes.md
+          files: build/ScreenLock.zip
+          draft: false
+          prerelease: false
+
+      - name: Push updated appcast.xml
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout main
+          git add appcast.xml
+          git diff --cached --quiet || git commit -m "chore: update appcast.xml for ${{ steps.version.outputs.tag }}"
+          git push origin main

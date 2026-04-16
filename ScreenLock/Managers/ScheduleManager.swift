@@ -1,4 +1,8 @@
-import Foundation
+import Cocoa
+import UserNotifications
+import os.log
+
+private let log = OSLog(subsystem: "com.yugangcao.screenlock", category: "Schedule")
 
 enum ScheduleState {
     case normal
@@ -17,31 +21,29 @@ class ScheduleManager {
     private init() {}
 
     func start() {
-        stop() // Clear any existing timer
+        stop()
 
-        // Check every minute
         timer = Timer.scheduledTimer(withTimeInterval: 60.0, repeats: true) { [weak self] _ in
             self?.checkSchedule()
         }
+        RunLoop.current.add(timer!, forMode: .common)
 
-        // Also check immediately
         checkSchedule()
-
-        print("ScheduleManager: Started")
+        os_log("Started", log: log, type: .info)
     }
 
     func stop() {
         timer?.invalidate()
         timer = nil
-        print("ScheduleManager: Stopped")
+        os_log("Stopped", log: log, type: .info)
     }
 
     func checkSchedule() {
         let settings = SettingsManager.shared.settings
 
-        // If lock is disabled, stay in normal state
         if !settings.lockEnabled {
             if state != .normal {
+                ScreenManager.shared.cancelDimming()
                 transitionToNormal()
             }
             return
@@ -49,106 +51,142 @@ class ScheduleManager {
 
         let now = Date()
 
-        guard let lockTime = parseTime(settings.lockTime) else {
-            print("ScheduleManager: Invalid lock time format")
+        guard let todayLock = todayOccurrence(of: settings.lockTime, relativeTo: now) else {
+            os_log("Invalid lock time format", log: log, type: .error)
             return
         }
 
-        let warningTime = Calendar.current.date(
-            byAdding: .minute,
-            value: -settings.warningMinutes,
-            to: lockTime
-        )!
+        let warningStart = todayLock.addingTimeInterval(-Double(settings.warningMinutes) * 60)
 
-        // Determine state
-        if now >= lockTime {
+        // Grace window: within 2 minutes after lock time, still trigger lock.
+        let graceEnd = todayLock.addingTimeInterval(120)
+
+        if now >= todayLock && now < graceEnd {
             if state != .locked {
                 transitionToLocked()
             }
-        } else if now >= warningTime {
+        } else if now >= warningStart && now < todayLock {
             if state != .warning {
                 transitionToWarning(durationMinutes: settings.warningMinutes)
             }
         } else {
             if state != .normal {
+                ScreenManager.shared.cancelDimming()
                 transitionToNormal()
             }
         }
     }
 
-    private func parseTime(_ timeString: String) -> Date? {
-        let components = timeString.split(separator: ":").compactMap { Int($0) }
-        guard components.count == 2 else { return nil }
+    /// Returns today's occurrence of `timeString` (HH:mm) regardless of whether
+    /// it has passed. Used for range-based schedule comparison.
+    private func todayOccurrence(of timeString: String, relativeTo now: Date) -> Date? {
+        let parts = timeString.split(separator: ":").compactMap { Int($0) }
+        guard parts.count == 2,
+              (0...23).contains(parts[0]),
+              (0...59).contains(parts[1]) else { return nil }
 
-        let hour = components[0]
-        let minute = components[1]
+        let cal = Calendar.current
+        var dc = cal.dateComponents([.year, .month, .day], from: now)
+        dc.hour = parts[0]
+        dc.minute = parts[1]
+        dc.second = 0
 
-        var dateComponents = Calendar.current.dateComponents([.year, .month, .day], from: Date())
-        dateComponents.hour = hour
-        dateComponents.minute = minute
-        dateComponents.second = 0
+        guard let target = cal.date(from: dc) else { return nil }
 
-        guard var targetDate = Calendar.current.date(from: dateComponents) else { return nil }
-
-        // If target time has passed today, schedule for tomorrow
-        if targetDate < Date() {
-            targetDate = Calendar.current.date(byAdding: .day, value: 1, to: targetDate)!
+        // For times in the small hours (0:00–5:59), if current time is in the
+        // evening (18:00+), this means the lock is "tonight" = tomorrow calendar day.
+        if parts[0] < 6 && cal.component(.hour, from: now) >= 18 {
+            return cal.date(byAdding: .day, value: 1, to: target)
         }
 
-        return targetDate
+        // For evening times, if we're past the grace window, roll to tomorrow
+        // so getTimeUntilLock shows the next occurrence.
+        let graceEnd = target.addingTimeInterval(120)
+        if now >= graceEnd && parts[0] >= 18 {
+            return cal.date(byAdding: .day, value: 1, to: target)
+        }
+
+        return target
+    }
+
+    /// Used for countdown display — always returns a future lock time.
+    private func nextLockTime(for settings: Settings, now: Date) -> Date? {
+        guard let today = todayOccurrence(of: settings.lockTime, relativeTo: now) else { return nil }
+        let graceEnd = today.addingTimeInterval(120)
+        if now >= graceEnd {
+            return Calendar.current.date(byAdding: .day, value: 1, to: today)
+        }
+        return today
     }
 
     private func transitionToNormal() {
         state = .normal
-        print("ScheduleManager: State -> Normal")
+        os_log("State -> Normal", log: log, type: .info)
         onStateChange?(.normal)
     }
 
     private func transitionToWarning(durationMinutes: Int) {
         state = .warning
-        print("ScheduleManager: State -> Warning")
+        os_log("State -> Warning", log: log, type: .info)
+        NSSound(named: "Tink")?.play()
         ScreenManager.shared.startGradualDimming(durationMinutes: durationMinutes)
+        sendWarningNotification(minutesLeft: durationMinutes)
         onStateChange?(.warning)
+    }
+
+    private func sendWarningNotification(minutesLeft: Int) {
+        let content = UNMutableNotificationContent()
+        content.title = L("warning.notification.title")
+        content.body = L("warning.notification.body", minutesLeft)
+        content.sound = .default
+
+        let request = UNNotificationRequest(
+            identifier: "screenlock-warning",
+            content: content,
+            trigger: nil
+        )
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                os_log("Failed to send notification: %{public}@", log: log, type: .error, error.localizedDescription)
+            }
+        }
     }
 
     private func transitionToLocked() {
         state = .locked
-        print("ScheduleManager: State -> Locked")
-        ScreenManager.shared.lockScreenAndTurnOffDisplay()
-        onStateChange?(.locked)
-
-        // Reset to normal after lock (for next day)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
-            self?.transitionToNormal()
+        os_log("State -> Locked", log: log, type: .info)
+        ScreenManager.shared.lockScreenAndTurnOffDisplay { [weak self] in
+            DispatchQueue.main.async {
+                self?.transitionToNormal()
+            }
         }
+        onStateChange?(.locked)
     }
 
     func getTimeUntilLock() -> String {
         let settings = SettingsManager.shared.settings
 
-        // If lock is disabled
         if !settings.lockEnabled {
-            return "定时锁屏已禁用"
-        }
-
-        guard let lockTime = parseTime(settings.lockTime) else {
-            return "Invalid time"
+            return L("schedule.disabled")
         }
 
         let now = Date()
-        let interval = lockTime.timeIntervalSince(now)
+        guard let lockTime = nextLockTime(for: settings, now: now) else {
+            return L("schedule.format_error")
+        }
 
+        let interval = lockTime.timeIntervalSince(now)
         if interval < 0 {
-            return "已过锁屏时间"
+            return L("schedule.past_time")
         }
 
         let hours = Int(interval) / 3600
         let minutes = (Int(interval) % 3600) / 60
 
         if hours > 0 {
-            return "距离锁屏还有 \(hours)小时\(minutes)分钟"
+            return L("schedule.countdown.hours", hours, minutes)
         } else {
-            return "距离锁屏还有 \(minutes)分钟"
+            return L("schedule.countdown.minutes", minutes)
         }
     }
 

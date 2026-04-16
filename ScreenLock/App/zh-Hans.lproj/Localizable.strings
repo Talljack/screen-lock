@@ -1,0 +1,225 @@
+/* Menu Bar */
+"menu.title" = "ScreenLock - 定时锁屏助手";
+"menu.loading" = "加载中...";
+"menu.status.normal" = "正常运行";
+"menu.status.warning" = "可爱提醒已开始";
+"menu.status.locked" = "强制休息中";
+"menu.lock_toggle" = "定时锁屏";
+"menu.lock_now" = "立即锁屏 (⌥⌘L)";
+"menu.lock_time" = "锁屏时间";
+"menu.warning" = "提前警告";
+"menu.break_duration" = "休息时长";
+"menu.appearance" = "外观设置";
+"menu.prevent_sleep" = "合盖不休眠";
+"menu.auto_start" = "开机自启动";
+"menu.stats" = "锁屏统计";
+"menu.export_csv" = "导出统计 (CSV)";
+"menu.clear_stats" = "清除统计数据...";
+"menu.check_update" = "检查更新...";
+"menu.about" = "关于 ScreenLock";
+"menu.quit" = "退出";
+
+/* Menu - Current Values */
+"menu.lock_time.value" = "锁屏时间：%@";
+"menu.warning.value" = "提前警告：%d 分钟";
+"menu.break.value" = "休息时长：%d 分钟";
+"menu.appearance.value" = "外观设置：%@";
+"menu.custom_time" = "自定义时间...";
+"menu.custom_time.value" = "自定义时间 (%@)";
+"menu.custom" = "自定义...";
+"menu.custom.value" = "自定义 (%d 分钟)";
+
+/* Menu - Appearance Submenu */
+"appearance.theme_section" = "主题风格";
+"appearance.background_section" = "背景图";
+"appearance.choose_bg" = "选择背景图...";
+"appearance.use_theme_bg" = "使用主题动态背景";
+"appearance.clear_bg" = "清除背景图（恢复主题背景）";
+"appearance.current_bg" = "当前：%@";
+"appearance.current_theme_bg" = "当前：主题动态背景";
+"appearance.copy_preview" = "当前文案预览";
+"appearance.edit_copy" = "编辑锁屏文案...";
+"appearance.reset_copy" = "恢复默认文案";
+"appearance.preview" = "预览锁屏效果...";
+
+/* Themes */
+"theme.peachBunny" = "蜜桃兔兔";
+"theme.cloudPudding" = "云朵布丁";
+"theme.starlightCat" = "星星晚安";
+
+/* Units */
+"unit.minutes" = "%d 分钟";
+"unit.minute_input" = "分钟";
+
+/* Common Buttons */
+"button.save" = "保存";
+"button.cancel" = "取消";
+"button.ok" = "好的";
+"button.confirm" = "确定";
+"button.clear" = "清除";
+
+/* Copy Editor */
+"copy_editor.title" = "编辑锁屏文案";
+"copy_editor.subtitle" = "自定义锁屏时显示的文案，让提醒更有你的风格";
+"copy_editor.field.title" = "标题（锁屏主文案）";
+"copy_editor.field.title_placeholder" = "例如：该睡觉啦~";
+"copy_editor.field.subtitle" = "副标题";
+"copy_editor.field.subtitle_placeholder" = "例如：早睡早起身体好";
+"copy_editor.field.footer" = "底部提示";
+"copy_editor.field.footer_placeholder" = "例如：锁屏结束后自动跳转系统锁屏";
+"copy_editor.preview" = "预览效果";
+
+/* Lock Screen Preview */
+"preview.title" = "锁屏预览 — %@";
+
+/* Custom Time Input */
+"custom_time.title" = "自定义锁屏时间";
+"custom_time.message" = "输入 24 小时制时间，格式：HH:mm（例如 23:30）";
+"custom_time.error.title" = "时间格式错误";
+"custom_time.error.message" = "请输入有效的 HH:mm 格式，例如 23:30";
+"custom_time.placeholder" = "请输入分钟数";
+
+/* Custom Warning */
+"custom_warning.title" = "自定义提前警告时间";
+"custom_warning.message" = "锁屏前多少分钟开始提醒？（1-120 分钟）";
+
+/* Custom Break */
+"custom_break.title" = "自定义强制休息时长";
+"custom_break.message" = "输入你想要的分钟数，测试时可以设为 1 分钟。";
+
+/* Background Image */
+"bg.choose_title" = "选择背景图";
+
+/* Clear Stats */
+"clear_stats.title" = "确定要清除所有统计数据吗？";
+"clear_stats.message" = "这将删除所有锁屏记录和成就进度，此操作不可撤销。";
+
+/* About */
+"about.version" = "版本 %@";
+"about.description" = "可爱的定时锁屏助手，帮你养成健康的睡眠习惯。";
+"about.hotkey" = "全局快捷键：⌥⌘L 立即锁屏";
+
+/* Auto Start */
+"autostart.error" = "设置开机自启动失败";
+
+/* Export */
+"export.error" = "导出失败";
+
+/* Update */
+"update.check_failed" = "检查更新失败";
+"update.check_failed.message" = "无法连接到更新服务器：%@";
+"update.up_to_date" = "当前已是最新版本";
+"update.up_to_date.message" = "ScreenLock v%@ 已是最新版本。";
+"update.new_version" = "发现新版本 v%@ 🎉";
+"update.current_version" = "当前版本：v%@";
+"update.latest_version" = "最新版本：v%@";
+"update.changelog" = "更新日志：";
+"update.no_notes" = "暂无更新说明";
+"update.install" = "立即更新";
+"update.later" = "稍后再说";
+
+/* Permissions */
+"permission.title" = "需要辅助功能权限";
+"permission.message" = "ScreenLock 需要「辅助功能」权限来控制屏幕亮度和锁屏。\n\n请前往：系统设置 → 隐私与安全性 → 辅助功能，\n找到 ScreenLock 并开启权限。\n\n开启后 app 即可正常工作。";
+"permission.open_settings" = "打开系统设置";
+"permission.later" = "稍后再说";
+
+/* Achievement */
+"achievement.unlocked" = "%@ 成就解锁！";
+"achievement.awesome" = "太棒了！";
+
+/* Achievements */
+"achievement.streak3.title" = "早睡新手";
+"achievement.streak3.desc" = "连续 3 天按时锁屏";
+"achievement.streak7.title" = "睡眠卫士";
+"achievement.streak7.desc" = "连续 7 天按时锁屏";
+"achievement.streak14.title" = "作息达人";
+"achievement.streak14.desc" = "连续 14 天按时锁屏";
+"achievement.streak30.title" = "健康冠军";
+"achievement.streak30.desc" = "连续 30 天按时锁屏";
+"achievement.total10.title" = "起步之星";
+"achievement.total10.desc" = "累计锁屏 10 次";
+"achievement.total50.title" = "坚持有方";
+"achievement.total50.desc" = "累计锁屏 50 次";
+"achievement.total100.title" = "月光使者";
+"achievement.total100.desc" = "累计锁屏 100 次";
+
+/* Stats Window */
+"stats.title" = "锁屏统计";
+"stats.chart_title" = "锁屏趋势";
+"stats.7days" = "7 天";
+"stats.30days" = "30 天";
+"stats.achievements" = "成就墙";
+"stats.greeting.master" = "你真是睡眠大师！";
+"stats.greeting.great" = "坚持得很棒，继续加油！";
+"stats.greeting.good" = "好的开始，继续保持！";
+"stats.greeting.start" = "今晚开始早睡吧";
+"stats.journey" = "你的锁屏旅程";
+"stats.current_streak" = "当前连续";
+"stats.longest_streak" = "最长连续";
+"stats.total" = "总锁屏";
+"stats.avg_time" = "平均时间";
+"stats.days" = "%d 天";
+"stats.zero_days" = "0 天";
+"stats.count" = "%d 次";
+"stats.weekly" = "本周 vs 上周";
+"stats.completion" = "完成率";
+"stats.trigger_split" = "定时 / 手动";
+
+/* Schedule */
+"schedule.disabled" = "定时锁屏已禁用";
+"schedule.format_error" = "时间格式错误";
+"schedule.past_time" = "已过锁屏时间";
+"schedule.countdown.hours" = "距离锁屏还有 %d小时%d分钟";
+"schedule.countdown.minutes" = "距离锁屏还有 %d分钟";
+
+/* Warning Notification */
+"warning.notification.title" = "该准备休息啦 🌙";
+"warning.notification.body" = "还有 %d 分钟就要锁屏了，快保存工作吧~";
+
+/* Status Messages */
+"status.screen_unavailable" = "屏幕控制功能不可用";
+"status.lock_unavailable" = "系统锁屏功能不可用";
+"status.sleep_unavailable" = "合盖不休眠功能不可用";
+
+/* Lock Screen Copy Sets - Peach Theme */
+"copy.peach.1.title" = "该睡觉啦~";
+"copy.peach.1.subtitle" = "今天辛苦啦，好好休息一下吧！";
+"copy.peach.1.footer" = "锁屏结束后自动跳转系统锁屏 🔒";
+"copy.peach.2.title" = "晚安好梦 🌙";
+"copy.peach.2.subtitle" = "夜深了，让眼睛休息一下~";
+"copy.peach.2.footer" = "早睡早起，明天会更好！";
+"copy.peach.3.title" = "休息时间到！";
+"copy.peach.3.subtitle" = "放下手机，闭上眼睛深呼吸~";
+"copy.peach.3.footer" = "保存好工作，安心入睡 💤";
+"copy.peach.4.title" = "嘘…该睡了";
+"copy.peach.4.subtitle" = "小兔子都睡了，你也快睡吧~";
+"copy.peach.4.footer" = "明天又是元气满满的一天！";
+
+/* Lock Screen Copy Sets - Cloud Theme */
+"copy.cloud.1.title" = "云朵说晚安~";
+"copy.cloud.1.subtitle" = "蓬松的云朵已经准备好了，快来躺上去！";
+"copy.cloud.1.footer" = "锁屏结束后自动跳转系统锁屏 🔒";
+"copy.cloud.2.title" = "到点休息啦";
+"copy.cloud.2.subtitle" = "让大脑也飘在云端放松一下~";
+"copy.cloud.2.footer" = "充足的睡眠是最好的护肤品！";
+"copy.cloud.3.title" = "软绵绵时间~";
+"copy.cloud.3.subtitle" = "今天的烦恼就留给明天的自己吧！";
+"copy.cloud.3.footer" = "闭上眼，数绵羊 🐑";
+"copy.cloud.4.title" = "夜色正好";
+"copy.cloud.4.subtitle" = "繁星点点，是时候说晚安了~";
+"copy.cloud.4.footer" = "好梦正在配送中 📦";
+
+/* Lock Screen Copy Sets - Starlight Theme */
+"copy.star.1.title" = "星星为你守夜 ✨";
+"copy.star.1.subtitle" = "银河都暗下来了，你也该休息了~";
+"copy.star.1.footer" = "锁屏结束后自动跳转系统锁屏 🔒";
+"copy.star.2.title" = "月亮升起来了";
+"copy.star.2.subtitle" = "夜空中最亮的星，等你入梦~";
+"copy.star.2.footer" = "睡一个好觉，明天继续闪耀！";
+"copy.star.3.title" = "晚安，追星人";
+"copy.star.3.subtitle" = "今晚的星空很美，但你更需要休息~";
+"copy.star.3.footer" = "做个好梦，梦里有星辰大海 🌊";
+"copy.star.4.title" = "宇宙都在说晚安";
+"copy.star.4.subtitle" = "深夜的宁静，是给你最好的礼物~";
+"copy.star.4.footer" = "放松身心，进入甜美的梦乡 💫";

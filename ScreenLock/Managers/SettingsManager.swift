@@ -32,10 +32,11 @@ class SettingsManager {
               let settings = try? JSONDecoder().decode(Settings.self, from: data) else {
             return Settings.default
         }
-        return settings
+        return settings.validated()
     }
 
     func save() {
+        settings = settings.validated()
         guard let data = try? JSONEncoder().encode(settings) else { return }
         try? data.write(to: fileURL)
         onSettingsChanged?()
@@ -63,6 +64,63 @@ class SettingsManager {
 
     func updateForcedBreakMinutes(_ minutes: Int) {
         settings.forcedBreakMinutes = minutes
+        save()
+    }
+
+    func updateLockScreenTheme(_ theme: LockScreenTheme) {
+        settings.appearance.theme = theme
+        save()
+    }
+
+    func updateBackgroundImagePath(_ path: String?) {
+        settings.appearance.backgroundImagePath = path
+        save()
+    }
+
+    func updateLockScreenCopy(title: String, subtitle: String, footer: String) {
+        settings.appearance.titleText = title
+        settings.appearance.subtitleText = subtitle
+        settings.appearance.footerText = footer
+        save()
+    }
+
+    func resetLockScreenAppearance() {
+        settings.appearance = .default
+        save()
+    }
+
+    func updateAutoStart(_ enabled: Bool) {
+        settings.autoStartEnabled = enabled
+        save()
+    }
+
+    func markPermissionGuideShown() {
+        settings.hasShownPermissionGuide = true
+        save()
+    }
+
+    func updateLockScreenThemeAndResetCopy(_ theme: LockScreenTheme) {
+        settings.appearance.theme = theme
+        if !settings.appearance.isCustomCopy {
+            let copy = theme.defaultCopy
+            settings.appearance.titleText = copy.title
+            settings.appearance.subtitleText = copy.subtitle
+            settings.appearance.footerText = copy.footer
+        }
+        save()
+    }
+
+    func markCopyAsCustom() {
+        settings.appearance.isCustomCopy = true
+        save()
+    }
+
+    func resetCopyToThemeDefault() {
+        let copy = settings.appearance.theme.defaultCopy
+        settings.appearance.titleText = copy.title
+        settings.appearance.subtitleText = copy.subtitle
+        settings.appearance.footerText = copy.footer
+        settings.appearance.isCustomCopy = false
         save()
     }
 }
