@@ -119,8 +119,8 @@ private final class LockScreenBackgroundView: NSView {
 }
 
 class LockScreenWindow: NSWindow {
-    private let lockAppearance: LockScreenAppearance
-    private let palette: LockScreenPalette
+    private var lockAppearance: LockScreenAppearance
+    private var palette: LockScreenPalette
     private var countdownLabel: NSTextField?
     private var cardView: NSVisualEffectView?
     private var allowClose = false
@@ -136,8 +136,7 @@ class LockScreenWindow: NSWindow {
             contentRect: screen.frame,
             styleMask: [.borderless, .fullSizeContentView],
             backing: .buffered,
-            defer: false,
-            screen: screen
+            defer: false
         )
 
         setFrame(screen.frame, display: false)
@@ -211,24 +210,24 @@ class LockScreenWindow: NSWindow {
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.orientation = .vertical
         stack.alignment = .centerX
-        stack.spacing = 16
+        stack.spacing = 20
         card.addSubview(stack)
 
         let badge = makeLabel(
             "\(palette.symbol)  \(lockAppearance.theme.displayName)",
-            size: 17, weight: .semibold
+            size: 19, weight: .semibold
         )
         badge.textColor = palette.secondaryTextColor
         badge.alignment = .center
         stack.addArrangedSubview(badge)
 
-        let titleLabel = makeLabel(lockAppearance.titleText, size: 34, weight: .bold)
+        let titleLabel = makeLabel(lockAppearance.titleText, size: 40, weight: .bold)
         titleLabel.maximumNumberOfLines = 2
         titleLabel.textColor = palette.secondaryTextColor
         titleLabel.alignment = .center
         stack.addArrangedSubview(titleLabel)
 
-        let subtitleLabel = makeLabel(lockAppearance.subtitleText, size: 18, weight: .medium)
+        let subtitleLabel = makeLabel(lockAppearance.subtitleText, size: 22, weight: .medium)
         subtitleLabel.maximumNumberOfLines = 3
         subtitleLabel.textColor = palette.secondaryTextColor.withAlphaComponent(0.92)
         subtitleLabel.alignment = .center
@@ -238,18 +237,18 @@ class LockScreenWindow: NSWindow {
         countdownContainer.translatesAutoresizingMaskIntoConstraints = false
         countdownContainer.wantsLayer = true
         countdownContainer.layer?.backgroundColor = palette.accentColor.withAlphaComponent(0.12).cgColor
-        countdownContainer.layer?.cornerRadius = 24
+        countdownContainer.layer?.cornerRadius = 28
         countdownContainer.layer?.borderWidth = 1
         countdownContainer.layer?.borderColor = palette.accentColor.withAlphaComponent(0.25).cgColor
         stack.addArrangedSubview(countdownContainer)
 
-        countdownLabel = makeLabel(formatTime(remainingSeconds), size: 54, weight: .bold, monospaced: true)
+        countdownLabel = makeLabel(formatTime(remainingSeconds), size: 64, weight: .bold, monospaced: true)
         countdownLabel?.translatesAutoresizingMaskIntoConstraints = false
         countdownLabel?.textColor = palette.accentColor
         countdownLabel?.alignment = .center
         countdownContainer.addSubview(countdownLabel!)
 
-        let footerLabel = makeLabel(lockAppearance.footerText, size: 15, weight: .medium)
+        let footerLabel = makeLabel(lockAppearance.footerText, size: 17, weight: .medium)
         footerLabel.maximumNumberOfLines = 4
         footerLabel.textColor = palette.footerTextColor
         footerLabel.alignment = .center
@@ -258,18 +257,18 @@ class LockScreenWindow: NSWindow {
         NSLayoutConstraint.activate([
             card.centerXAnchor.constraint(equalTo: backgroundView.centerXAnchor),
             card.centerYAnchor.constraint(equalTo: backgroundView.centerYAnchor),
-            card.widthAnchor.constraint(lessThanOrEqualToConstant: 620),
-            card.widthAnchor.constraint(greaterThanOrEqualToConstant: 420),
+            card.widthAnchor.constraint(lessThanOrEqualToConstant: 720),
+            card.widthAnchor.constraint(greaterThanOrEqualToConstant: 480),
             card.leadingAnchor.constraint(greaterThanOrEqualTo: backgroundView.leadingAnchor, constant: 32),
             card.trailingAnchor.constraint(lessThanOrEqualTo: backgroundView.trailingAnchor, constant: -32),
 
-            stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 40),
-            stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -40),
-            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 36),
-            stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -36),
+            stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 48),
+            stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -48),
+            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 44),
+            stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -44),
 
             countdownContainer.widthAnchor.constraint(equalTo: stack.widthAnchor),
-            countdownContainer.heightAnchor.constraint(equalToConstant: 116),
+            countdownContainer.heightAnchor.constraint(equalToConstant: 136),
 
             countdownLabel!.centerXAnchor.constraint(equalTo: countdownContainer.centerXAnchor),
             countdownLabel!.centerYAnchor.constraint(equalTo: countdownContainer.centerYAnchor)
@@ -292,15 +291,13 @@ class LockScreenWindow: NSWindow {
         label.layer?.add(pulse, forKey: "pulse")
     }
 
+    func allowDismiss() {
+        allowClose = true
+    }
+
     func dismissForSystemLock() {
         allowClose = true
-        NSAnimationContext.runAnimationGroup({ ctx in
-            ctx.duration = 0.3
-            self.animator().alphaValue = 0
-        }, completionHandler: { [weak self] in
-            self?.orderOut(nil)
-            self?.close()
-        })
+        orderOut(nil)
     }
 
     override func close() {
