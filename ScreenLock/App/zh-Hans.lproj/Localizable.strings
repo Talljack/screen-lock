@@ -177,6 +177,12 @@
 "warning.notification.title" = "该准备休息啦 🌙";
 "warning.notification.body" = "还有 %d 分钟就要锁屏了，快保存工作吧~";
 
+/* Language */
+"menu.language" = "语言";
+"menu.language.value" = "语言：%@";
+"lang.auto" = "跟随系统";
+"lang.restart_hint" = "语言切换将在下次打开菜单时生效";
+
 /* Status Messages */
 "status.screen_unavailable" = "屏幕控制功能不可用";
 "status.lock_unavailable" = "系统锁屏功能不可用";

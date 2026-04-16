@@ -36,6 +36,7 @@ class MenuBarController {
     private var copyPreviewFooterItem: NSMenuItem?
     private var preventSleepItem: NSMenuItem?
     private var autoStartItem: NSMenuItem?
+    private var languageParentItem: NSMenuItem?
     private var globalHotkeyRef: EventHotKeyRef?
 
     private var currentState: ScheduleState = .normal
@@ -67,7 +68,12 @@ class MenuBarController {
 
         menu = NSMenu()
         menu?.minimumWidth = 280
+        setupMenuItems()
 
+        statusItem?.menu = menu
+    }
+
+    private func setupMenuItems() {
         // -- Info section --
         countdownMenuItem = NSMenuItem()
         countdownMenuItem?.attributedTitle = createCountdownAttributedString(L("menu.loading"))
@@ -138,6 +144,10 @@ class MenuBarController {
             menu?.addItem(autoStartItem!)
         }
 
+        languageParentItem = NSMenuItem(title: L("menu.language"), action: nil, keyEquivalent: "")
+        languageParentItem?.submenu = buildLanguageSubmenu()
+        menu?.addItem(languageParentItem!)
+
         menu?.addItem(.separator())
 
         // -- API status (hidden by default) --
@@ -173,8 +183,6 @@ class MenuBarController {
         let quitItem = NSMenuItem(title: L("menu.quit"), action: #selector(quit(_:)), keyEquivalent: "q")
         quitItem.target = self
         menu?.addItem(quitItem)
-
-        statusItem?.menu = menu
     }
 
     // MARK: - Submenu Builders
@@ -225,6 +233,36 @@ class MenuBarController {
         customBreakDurationItem?.target = self
         sub.addItem(customBreakDurationItem!)
         return sub
+    }
+
+    private func buildLanguageSubmenu() -> NSMenu {
+        let sub = NSMenu()
+        let currentLang = SettingsManager.shared.settings.language
+
+        for lang in AppLanguage.allCases {
+            let item = NSMenuItem(title: lang.displayName, action: #selector(switchLanguage(_:)), keyEquivalent: "")
+            item.target = self
+            item.tag = AppLanguage.allCases.firstIndex(of: lang) ?? 0
+            item.state = (lang == currentLang) ? .on : .off
+            sub.addItem(item)
+        }
+
+        return sub
+    }
+
+    @objc private func switchLanguage(_ sender: NSMenuItem) {
+        let allLangs = AppLanguage.allCases
+        guard sender.tag >= 0, sender.tag < allLangs.count else { return }
+        let selected = allLangs[sender.tag]
+        SettingsManager.shared.updateLanguage(selected)
+
+        rebuildMenu()
+    }
+
+    private func rebuildMenu() {
+        menu?.removeAllItems()
+        setupMenuItems()
+        updateUI()
     }
 
     private func buildAppearanceSubmenu() -> NSMenu {
@@ -405,6 +443,7 @@ class MenuBarController {
         // Toggle states
         preventSleepItem?.state = settings.preventSleepEnabled ? .on : .off
         autoStartItem?.state = settings.autoStartEnabled ? .on : .off
+        languageParentItem?.title = L("menu.language.value", settings.language.displayName)
 
         // API status
         let warnings = [

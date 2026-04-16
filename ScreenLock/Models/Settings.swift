@@ -142,6 +142,7 @@ struct Settings: Codable {
     var appearance: LockScreenAppearance
     var autoStartEnabled: Bool
     var hasShownPermissionGuide: Bool
+    var language: AppLanguage
 
     static let `default` = Settings(
         lockTime: "00:00",
@@ -151,12 +152,14 @@ struct Settings: Codable {
         forcedBreakMinutes: 15,
         appearance: .default,
         autoStartEnabled: false,
-        hasShownPermissionGuide: false
+        hasShownPermissionGuide: false,
+        language: .auto
     )
 
     enum CodingKeys: String, CodingKey {
         case lockTime, warningMinutes, preventSleepEnabled, lockEnabled
         case forcedBreakMinutes, appearance, autoStartEnabled, hasShownPermissionGuide
+        case language
     }
 
     init(
@@ -167,7 +170,8 @@ struct Settings: Codable {
         forcedBreakMinutes: Int,
         appearance: LockScreenAppearance,
         autoStartEnabled: Bool = false,
-        hasShownPermissionGuide: Bool = false
+        hasShownPermissionGuide: Bool = false,
+        language: AppLanguage = .auto
     ) {
         self.lockTime = lockTime
         self.warningMinutes = warningMinutes
@@ -177,6 +181,7 @@ struct Settings: Codable {
         self.appearance = appearance
         self.autoStartEnabled = autoStartEnabled
         self.hasShownPermissionGuide = hasShownPermissionGuide
+        self.language = language
     }
 
     init(from decoder: Decoder) throws {
@@ -197,6 +202,8 @@ struct Settings: Codable {
             ?? Self.default.autoStartEnabled
         self.hasShownPermissionGuide = try container.decodeIfPresent(Bool.self, forKey: .hasShownPermissionGuide)
             ?? Self.default.hasShownPermissionGuide
+        self.language = try container.decodeIfPresent(AppLanguage.self, forKey: .language)
+            ?? Self.default.language
     }
 
     func validated() -> Settings {
@@ -208,7 +215,8 @@ struct Settings: Codable {
             forcedBreakMinutes: max(1, forcedBreakMinutes),
             appearance: appearance.validated(),
             autoStartEnabled: autoStartEnabled,
-            hasShownPermissionGuide: hasShownPermissionGuide
+            hasShownPermissionGuide: hasShownPermissionGuide,
+            language: language
         )
     }
 }

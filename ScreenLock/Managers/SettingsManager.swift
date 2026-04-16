@@ -123,4 +123,14 @@ class SettingsManager {
         settings.appearance.isCustomCopy = false
         save()
     }
+
+    func updateLanguage(_ language: AppLanguage) {
+        settings.language = language
+        LanguageManager.shared.applyLanguage(language)
+        save()
+    }
+
+    func applyStoredLanguage() {
+        LanguageManager.shared.applyLanguage(settings.language)
+    }
 }

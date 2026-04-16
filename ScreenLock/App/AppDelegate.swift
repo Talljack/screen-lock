@@ -35,6 +35,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self?.handleSettingsChanged()
         }
 
+        SettingsManager.shared.applyStoredLanguage()
+
         ScheduleManager.shared.start()
         menuBarController = MenuBarController(updater: updaterController.updater)
 

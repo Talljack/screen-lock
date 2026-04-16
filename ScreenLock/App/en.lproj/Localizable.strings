@@ -177,6 +177,12 @@
 "warning.notification.title" = "Time to get ready for bed 🌙";
 "warning.notification.body" = "%d minutes until screen lock, save your work~";
 
+/* Language */
+"menu.language" = "Language";
+"menu.language.value" = "Language: %@";
+"lang.auto" = "System Default";
+"lang.restart_hint" = "Language change takes effect next time you open the menu";
+
 /* Status Messages */
 "status.screen_unavailable" = "Screen control unavailable";
 "status.lock_unavailable" = "System lock unavailable";
