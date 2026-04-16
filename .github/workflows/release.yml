@@ -62,23 +62,32 @@ jobs:
         env:
           SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
         run: |
+          LENGTH=$(stat -f%z build/ScreenLock.zip)
+          echo "length=$LENGTH" >> "$GITHUB_OUTPUT"
+
           if [ -z "$SPARKLE_ED_PRIVATE_KEY" ]; then
             echo "signature=" >> "$GITHUB_OUTPUT"
-            echo "length=$(stat -f%z build/ScreenLock.zip)" >> "$GITHUB_OUTPUT"
             echo "::warning::SPARKLE_ED_PRIVATE_KEY not set, skipping signature"
+            exit 0
+          fi
+
+          SPARKLE_SIGN=$(find ~/Library/Developer/Xcode/DerivedData -name "sign_update" -path "*/artifacts/*" 2>/dev/null | head -1)
+          if [ -z "$SPARKLE_SIGN" ]; then
+            echo "::warning::sign_update tool not found, skipping signature"
+            echo "signature=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "$SPARKLE_ED_PRIVATE_KEY" > /tmp/sparkle_key.txt
+          RESULT=$("$SPARKLE_SIGN" build/ScreenLock.zip -f /tmp/sparkle_key.txt 2>&1) || true
+          rm -f /tmp/sparkle_key.txt
+
+          SIG=$(echo "$RESULT" | grep -o 'sparkle:edSignature="[^"]*"' | sed 's/sparkle:edSignature="//;s/"$//')
+          if [ -n "$SIG" ]; then
+            echo "signature=$SIG" >> "$GITHUB_OUTPUT"
           else
-            SPARKLE_SIGN=$(find /Users/runner/Library/Developer/Xcode/DerivedData -name "sign_update" -path "*/artifacts/*" | head -1)
-            if [ -z "$SPARKLE_SIGN" ]; then
-              echo "::warning::sign_update tool not found, skipping signature"
-              echo "signature=" >> "$GITHUB_OUTPUT"
-              echo "length=$(stat -f%z build/ScreenLock.zip)" >> "$GITHUB_OUTPUT"
-            else
-              RESULT=$("$SPARKLE_SIGN" build/ScreenLock.zip -f "$SPARKLE_ED_PRIVATE_KEY")
-              SIG=$(echo "$RESULT" | grep 'sparkle:edSignature=' | sed 's/.*sparkle:edSignature="\([^"]*\)".*/\1/')
-              LEN=$(echo "$RESULT" | grep 'length=' | sed 's/.*length="\([^"]*\)".*/\1/')
-              echo "signature=$SIG" >> "$GITHUB_OUTPUT"
-              echo "length=$LEN" >> "$GITHUB_OUTPUT"
-            fi
+            echo "::warning::Could not extract signature, output was: $RESULT"
+            echo "signature=" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Generate release notes
@@ -106,8 +115,12 @@ jobs:
           DATE=$(date -u "+%a, %d %b %Y %H:%M:%S +0000")
           REPO="${{ github.repository }}"
           URL="https://github.com/${REPO}/releases/download/${TAG}/ScreenLock.zip"
+          SIG_ATTR=""
+          if [ -n "$SIG" ]; then
+            SIG_ATTR="sparkle:edSignature=\"${SIG}\""
+          fi
 
-          cat > appcast.xml << EOF
+          cat > appcast.xml << APPCAST_EOF
           <?xml version="1.0" encoding="utf-8"?>
           <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
               <channel>
@@ -115,7 +128,6 @@ jobs:
                   <link>https://github.com/${REPO}/releases</link>
                   <description>Most recent updates to ScreenLock</description>
                   <language>zh-cn</language>
-
                   <item>
                       <title>Version ${VERSION}</title>
                       <pubDate>${DATE}</pubDate>
@@ -124,13 +136,12 @@ jobs:
                       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
                       <enclosure url="${URL}"
                                  type="application/octet-stream"
-                                 sparkle:edSignature="${SIG}"
+                                 ${SIG_ATTR}
                                  length="${LEN}"/>
                   </item>
-
               </channel>
           </rss>
-          EOF
+          APPCAST_EOF
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
