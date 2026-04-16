@@ -87,9 +87,8 @@ class MenuBarController {
         lockEnabledItem?.target = self
         menu?.addItem(lockEnabledItem!)
 
-        let lockNowItem = NSMenuItem(title: "立即锁屏", action: #selector(lockNow(_:)), keyEquivalent: "l")
+        let lockNowItem = NSMenuItem(title: "立即锁屏 (⌥⌘L)", action: #selector(lockNow(_:)), keyEquivalent: "")
         lockNowItem.target = self
-        lockNowItem.keyEquivalentModifierMask = [.command]
         if #available(macOS 11.0, *) {
             lockNowItem.image = NSImage(systemSymbolName: "lock.fill", accessibilityDescription: nil)
         }
@@ -191,13 +190,17 @@ class MenuBarController {
 
     private func buildWarningSubmenu() -> NSMenu {
         let sub = NSMenu()
-        for duration in [15, 30, 45, 60] {
+        for duration in [5, 10, 15, 30, 45, 60] {
             let item = NSMenuItem(title: "\(duration) 分钟", action: #selector(warningDurationSelected(_:)), keyEquivalent: "")
             item.target = self
             item.representedObject = duration
             warningMenuItems.append(item)
             sub.addItem(item)
         }
+        sub.addItem(.separator())
+        let customItem = NSMenuItem(title: "自定义...", action: #selector(customWarningDuration(_:)), keyEquivalent: "")
+        customItem.target = self
+        sub.addItem(customItem)
         return sub
     }
 
@@ -554,6 +557,28 @@ class MenuBarController {
         SettingsManager.shared.updateWarningMinutes(duration)
         updateUI()
         performFeedback()
+    }
+
+    @objc private func customWarningDuration(_ sender: NSMenuItem) {
+        let alert = NSAlert()
+        alert.messageText = "自定义提前警告时间"
+        alert.informativeText = "锁屏前多少分钟开始提醒？（1-120 分钟）"
+        alert.addButton(withTitle: "确定")
+        alert.addButton(withTitle: "取消")
+
+        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 120, height: 24))
+        input.placeholderString = "分钟"
+        input.stringValue = "\(SettingsManager.shared.settings.warningMinutes)"
+        alert.accessoryView = input
+
+        NSApp.activate(ignoringOtherApps: true)
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        if let value = Int(input.stringValue), value >= 1, value <= 120 {
+            SettingsManager.shared.updateWarningMinutes(value)
+            updateUI()
+            performFeedback()
+        }
     }
 
     @objc private func breakDurationSelected(_ sender: NSMenuItem) {
@@ -1076,6 +1101,11 @@ class MenuBarController {
 
             全局快捷键：⌥⌘L 立即锁屏
             """
+        if let appIcon = NSImage(named: "AppIcon") {
+            alert.icon = appIcon
+        } else if let appIcon = NSApp.applicationIconImage {
+            alert.icon = appIcon
+        }
         alert.addButton(withTitle: "好的")
         NSApp.activate(ignoringOtherApps: true)
         alert.runModal()
