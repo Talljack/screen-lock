@@ -213,33 +213,46 @@ class ScreenManager {
     }
 
     private func performSystemLock() {
-        let task = Process()
-        task.executableURL = URL(
-            fileURLWithPath: "/System/Library/CoreServices/Menu Extras/User.menu/Contents/Resources/CGSession"
-        )
-        task.arguments = ["-suspend"]
+        let sessionPaths = [
+            "/System/Library/CoreServices/Menu Extras/User.menu/Contents/Resources/CGSession",
+            "/usr/bin/pmset"
+        ]
 
-        do {
-            try task.run()
-            os_log("macOS system lock triggered", log: log, type: .info)
-        } catch {
-            os_log("Failed to trigger system lock: %{public}@", log: log, type: .error, error.localizedDescription)
-            statusMessage = L("status.lock_unavailable")
+        for path in sessionPaths {
+            if FileManager.default.fileExists(atPath: path) {
+                let task = Process()
+                task.executableURL = URL(fileURLWithPath: path)
+                task.arguments = path.hasSuffix("CGSession") ? ["-suspend"] : ["displaysleepnow"]
+
+                do {
+                    try task.run()
+                    os_log("System lock triggered via %{public}@", log: log, type: .info, path)
+                    return
+                } catch {
+                    os_log("Failed with %{public}@: %{public}@", log: log, type: .error, path, error.localizedDescription)
+                }
+            }
         }
+
+        os_log("No system lock method available, using display sleep", log: log, type: .info)
+        statusMessage = L("status.lock_unavailable")
     }
 
     private func closeLockWindows(force: Bool) {
         lockTimer?.invalidate()
         lockTimer = nil
 
-        for window in lockWindows {
+        let windows = lockWindows
+        lockWindows.removeAll()
+
+        for window in windows {
             if force {
-                window.dismissForSystemLock()
+                window.allowDismiss()
+                window.orderOut(nil)
             } else {
                 window.close()
             }
         }
-        lockWindows.removeAll()
     }
 
     func restoreOriginalGamma() {

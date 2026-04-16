@@ -466,7 +466,7 @@ class MenuBarController {
         switch state {
         case .normal:
             if let img = NSImage(named: "MenuBarIcon") {
-                img.isTemplate = false
+                img.isTemplate = true
                 button.image = img
                 button.title = ""
                 button.contentTintColor = nil
