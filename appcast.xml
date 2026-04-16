@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <channel>
+        <title>ScreenLock Updates</title>
+        <link>https://github.com/yugangcao/screen-lock/releases</link>
+        <description>Most recent updates to ScreenLock</description>
+        <language>zh-cn</language>
+
+        <item>
+            <title>Version 1.0</title>
+            <description><![CDATA[
+                <h2>ScreenLock v1.0 — 初始版本</h2>
+                <ul>
+                    <li>定时锁屏功能</li>
+                    <li>可爱主题和动态背景</li>
+                    <li>锁屏文案自定义</li>
+                    <li>睡眠统计仪表盘</li>
+                    <li>全局快捷键 (⌥⌘L)</li>
+                </ul>
+            ]]></description>
+            <pubDate>Wed, 16 Apr 2026 00:00:00 +0800</pubDate>
+            <sparkle:version>1</sparkle:version>
+            <sparkle:shortVersionString>1.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/yugangcao/screen-lock/releases/download/v1.0/ScreenLock.zip"
+                       type="application/octet-stream"
+                       sparkle:edSignature=""
+                       length="0"/>
+        </item>
+
+    </channel>
+</rss>

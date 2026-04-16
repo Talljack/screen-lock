@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		DD1122334455667788990001 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = DD1122334455667788990011 /* Sparkle */; };
 		1A2B3C4D5E6F7A8B9C0D1E2F /* DynamicBackgroundView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F7A8B9C0D1E20 /* DynamicBackgroundView.swift */; };
 		AA1122334455667788990022 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA1122334455667788990011 /* Assets.xcassets */; };
 		CC1122334455667788990011 /* LockEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC1122334455667788990001 /* LockEvent.swift */; };
@@ -148,6 +149,7 @@
 			buildConfigurationList = 549F8711910DCBE0D3D346AA /* Build configuration list for PBXNativeTarget "ScreenLock" */;
 			buildPhases = (
 				A888440C3CC0EE16C01E6BA4 /* Sources */,
+				DD1122334455667788990099 /* Frameworks */,
 				AA1122334455667788990033 /* Resources */,
 			);
 			buildRules = (
@@ -155,6 +157,9 @@
 			dependencies = (
 			);
 			name = ScreenLock;
+			packageProductDependencies = (
+				DD1122334455667788990011 /* Sparkle */,
+			);
 			productName = ScreenLock;
 			productReference = D369C1853BA1B6421CBABAEE /* ScreenLock.app */;
 			productType = "com.apple.product-type.application";
@@ -195,6 +200,9 @@
 				en,
 			);
 			mainGroup = 4E5E3AB61840FD450ACD38CE;
+			packageReferences = (
+				DD1122334455667788990021 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -203,6 +211,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		DD1122334455667788990099 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DD1122334455667788990001 /* Sparkle in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXResourcesBuildPhase section */
 		AA1122334455667788990033 /* Resources */ = {
@@ -478,6 +497,25 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		DD1122334455667788990021 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		DD1122334455667788990011 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DD1122334455667788990021 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A1CCD5D8365CE02478FD8C2B /* Project object */;
 }

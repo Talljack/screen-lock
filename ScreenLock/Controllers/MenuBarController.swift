@@ -1,6 +1,7 @@
 import Cocoa
 import Carbon.HIToolbox
 import ServiceManagement
+import Sparkle
 import UniformTypeIdentifiers
 import os.log
 
@@ -8,6 +9,7 @@ private let log = OSLog(subsystem: "com.yugangcao.screenlock", category: "MenuBa
 
 class MenuBarController {
     private let presetBreakDurations = [1, 5, 10, 15, 20, 30]
+    private let updater: SPUUpdater
 
     private var statusItem: NSStatusItem?
     private var menu: NSMenu?
@@ -38,7 +40,8 @@ class MenuBarController {
 
     private var currentState: ScheduleState = .normal
 
-    init() {
+    init(updater: SPUUpdater) {
+        self.updater = updater
         setupMenuBar()
         setupStateObserver()
         startRefreshTimer()
@@ -158,6 +161,10 @@ class MenuBarController {
         let clearStatsItem = NSMenuItem(title: "清除统计数据...", action: #selector(clearStats(_:)), keyEquivalent: "")
         clearStatsItem.target = self
         menu?.addItem(clearStatsItem)
+
+        let checkUpdateItem = NSMenuItem(title: "检查更新...", action: #selector(SPUUpdater.checkForUpdates), keyEquivalent: "")
+        checkUpdateItem.target = updater
+        menu?.addItem(checkUpdateItem)
 
         let aboutItem = NSMenuItem(title: "关于 ScreenLock", action: #selector(showAbout(_:)), keyEquivalent: "")
         aboutItem.target = self

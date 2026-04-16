@@ -1,4 +1,5 @@
 import Cocoa
+import Sparkle
 import UserNotifications
 import os.log
 
@@ -6,6 +7,16 @@ private let log = OSLog(subsystem: "com.yugangcao.screenlock", category: "App")
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var menuBarController: MenuBarController?
+    let updaterController: SPUStandardUpdaterController
+
+    override init() {
+        self.updaterController = SPUStandardUpdaterController(
+            startingUpdater: true,
+            updaterDelegate: nil,
+            userDriverDelegate: nil
+        )
+        super.init()
+    }
 
     func applicationWillFinishLaunching(_ notification: Notification) {}
 
@@ -25,7 +36,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         ScheduleManager.shared.start()
-        menuBarController = MenuBarController()
+        menuBarController = MenuBarController(updater: updaterController.updater)
 
         StatsManager.shared.onNewAchievement = { achievement in
             DispatchQueue.main.async {
