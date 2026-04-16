@@ -51,11 +51,23 @@ jobs:
           mkdir -p build/export
           cp -R build/ScreenLock.xcarchive/Products/Applications/ScreenLock.app build/export/
 
-      - name: Create zip
+      - name: Create ZIP
         run: |
           cd build/export
           zip -r -y ScreenLock.zip ScreenLock.app
           mv ScreenLock.zip ../
+
+      - name: Create DMG
+        run: |
+          DMG_DIR="build/dmg_staging"
+          mkdir -p "$DMG_DIR"
+          cp -R build/export/ScreenLock.app "$DMG_DIR/"
+          ln -s /Applications "$DMG_DIR/Applications"
+
+          hdiutil create -volname "ScreenLock" \
+            -srcfolder "$DMG_DIR" \
+            -ov -format UDZO \
+            "build/ScreenLock.dmg"
 
       - name: Sign update with Sparkle
         id: sign
@@ -91,7 +103,6 @@ jobs:
           fi
 
       - name: Generate release notes
-        id: notes
         run: |
           cat > build/release_notes.md << 'NOTES_EOF'
           ## ScreenLock ${{ steps.version.outputs.tag }}
@@ -100,6 +111,13 @@ jobs:
           See [commit history](https://github.com/${{ github.repository }}/compare/.../${{ steps.version.outputs.tag }}) for full details.
 
           ### Install
+
+          **DMG (recommended)**
+          1. Download `ScreenLock.dmg` below
+          2. Open the DMG and drag `ScreenLock.app` to `Applications`
+          3. Launch — the app runs in the menu bar
+
+          **ZIP**
           1. Download `ScreenLock.zip` below
           2. Unzip and move `ScreenLock.app` to `/Applications`
           3. Launch — the app runs in the menu bar
@@ -148,7 +166,9 @@ jobs:
         with:
           name: ScreenLock ${{ steps.version.outputs.tag }}
           body_path: build/release_notes.md
-          files: build/ScreenLock.zip
+          files: |
+            build/ScreenLock.zip
+            build/ScreenLock.dmg
           draft: false
           prerelease: false
 
