@@ -12,7 +12,7 @@ class StatsWindow: NSWindow {
             defer: false
         )
 
-        title = "锁屏统计"
+        title = L("stats.title")
         center()
         isReleasedWhenClosed = false
         backgroundColor = .windowBackgroundColor
@@ -100,10 +100,10 @@ class StatsWindow: NSWindow {
         chartHeader.orientation = .horizontal
         chartHeader.translatesAutoresizingMaskIntoConstraints = false
 
-        let chartTitle = NSTextField(labelWithString: "锁屏趋势")
+        let chartTitle = NSTextField(labelWithString: L("stats.chart_title"))
         chartTitle.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
 
-        let toggle = NSSegmentedControl(labels: ["7 天", "30 天"], trackingMode: .selectOne, target: self, action: #selector(periodChanged(_:)))
+        let toggle = NSSegmentedControl(labels: [L("stats.7days"), L("stats.30days")], trackingMode: .selectOne, target: self, action: #selector(periodChanged(_:)))
         toggle.selectedSegment = (periodDays == 7) ? 0 : 1
         toggle.controlSize = .small
 
@@ -144,7 +144,7 @@ class StatsWindow: NSWindow {
         y += 216
 
         // Achievements section
-        let achieveTitle = NSTextField(labelWithString: "成就墙")
+        let achieveTitle = NSTextField(labelWithString: L("stats.achievements"))
         achieveTitle.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
         achieveTitle.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(achieveTitle)
@@ -212,16 +212,16 @@ class StatsWindow: NSWindow {
 
         let greeting: String
         if streak >= 30 {
-            greeting = "你真是睡眠大师！"
+            greeting = L("stats.greeting.master")
         } else if streak >= 7 {
-            greeting = "坚持得很棒，继续加油！"
+            greeting = L("stats.greeting.great")
         } else if streak >= 1 {
-            greeting = "好的开始，继续保持！"
+            greeting = L("stats.greeting.good")
         } else {
-            greeting = "今晚开始早睡吧"
+            greeting = L("stats.greeting.start")
         }
 
-        let titleLabel = NSTextField(labelWithString: "你的锁屏旅程")
+        let titleLabel = NSTextField(labelWithString: L("stats.journey"))
         titleLabel.font = NSFont.systemFont(ofSize: 22, weight: .bold)
         titleLabel.textColor = .white
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -259,16 +259,16 @@ class StatsWindow: NSWindow {
         }
 
         let cards: [(emoji: String, title: String, value: String, gradientStart: NSColor, gradientEnd: NSColor)] = [
-            ("🔥", "当前连续", streak > 0 ? "\(streak) 天" : "0 天",
+            ("🔥", L("stats.current_streak"), streak > 0 ? L("stats.days", streak) : L("stats.zero_days"),
              NSColor(calibratedRed: 1.0, green: 0.55, blue: 0.45, alpha: 0.12),
              NSColor(calibratedRed: 1.0, green: 0.75, blue: 0.4, alpha: 0.08)),
-            ("🏆", "最长连续", "\(longestStreak) 天",
+            ("🏆", L("stats.longest_streak"), L("stats.days", longestStreak),
              NSColor(calibratedRed: 1.0, green: 0.82, blue: 0.3, alpha: 0.12),
              NSColor(calibratedRed: 0.98, green: 0.9, blue: 0.5, alpha: 0.08)),
-            ("🌙", "总锁屏", "\(totalCount) 次",
+            ("🌙", L("stats.total"), L("stats.count", totalCount),
              NSColor(calibratedRed: 0.55, green: 0.5, blue: 0.95, alpha: 0.12),
              NSColor(calibratedRed: 0.7, green: 0.65, blue: 1.0, alpha: 0.08)),
-            ("📊", "平均时间", avgText,
+            ("📊", L("stats.avg_time"), avgText,
              NSColor(calibratedRed: 0.35, green: 0.78, blue: 0.7, alpha: 0.12),
              NSColor(calibratedRed: 0.5, green: 0.85, blue: 0.78, alpha: 0.08)),
         ]
@@ -383,7 +383,7 @@ class StatsWindow: NSWindow {
             trendColor = .secondaryLabelColor
         }
         row.addArrangedSubview(makeInsightCard(
-            label: "本周 vs 上周",
+            label: L("stats.weekly"),
             value: "\(weekly.thisWeek) vs \(weekly.lastWeek)",
             badge: arrow,
             badgeColor: trendColor
@@ -393,7 +393,7 @@ class StatsWindow: NSWindow {
         let rate = stats.completionRate
         let rateStr = String(format: "%.0f%%", rate * 100)
         row.addArrangedSubview(makeInsightCard(
-            label: "完成率",
+            label: L("stats.completion"),
             value: rateStr,
             badge: nil,
             badgeColor: .clear
@@ -403,7 +403,7 @@ class StatsWindow: NSWindow {
         let scheduled = stats.scheduledCount
         let manual = stats.manualCount
         row.addArrangedSubview(makeInsightCard(
-            label: "定时 / 手动",
+            label: L("stats.trigger_split"),
             value: "\(scheduled) / \(manual)",
             badge: nil,
             badgeColor: .clear

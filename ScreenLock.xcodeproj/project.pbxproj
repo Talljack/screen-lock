@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		DD1122334455667788990001 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = DD1122334455667788990011 /* Sparkle */; };
+		EE1122334455667788990001 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = EE1122334455667788990010 /* Localizable.strings */; };
+		EE1122334455667788990002 /* L10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE1122334455667788990020 /* L10n.swift */; };
 		1A2B3C4D5E6F7A8B9C0D1E2F /* DynamicBackgroundView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F7A8B9C0D1E20 /* DynamicBackgroundView.swift */; };
 		AA1122334455667788990022 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA1122334455667788990011 /* Assets.xcassets */; };
 		CC1122334455667788990011 /* LockEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC1122334455667788990001 /* LockEvent.swift */; };
@@ -56,6 +58,9 @@
 		CC1122334455667788990001 /* LockEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockEvent.swift; sourceTree = "<group>"; };
 		CC1122334455667788990002 /* StatsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsManager.swift; sourceTree = "<group>"; };
 		CC1122334455667788990003 /* StatsWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsWindow.swift; sourceTree = "<group>"; };
+		EE1122334455667788990011 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		EE1122334455667788990012 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = "en.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		EE1122334455667788990020 /* L10n.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = L10n.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -65,6 +70,8 @@
 				224620A3ACCC748750DE9BD2 /* AppDelegate.swift */,
 				AA1122334455667788990011 /* Assets.xcassets */,
 				F4D719924486EE43172436FF /* Info.plist */,
+				EE1122334455667788990020 /* L10n.swift */,
+				EE1122334455667788990010 /* Localizable.strings */,
 				34C11DD2F6830F70D5F559F7 /* main.swift */,
 			);
 			path = App;
@@ -143,6 +150,18 @@
 		};
 /* End PBXGroup section */
 
+/* Begin PBXVariantGroup section */
+		EE1122334455667788990010 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				EE1122334455667788990011 /* zh-Hans */,
+				EE1122334455667788990012 /* en */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
 /* Begin PBXNativeTarget section */
 		6CFF01E3EF73907FBB64C1EE /* ScreenLock */ = {
 			isa = PBXNativeTarget;
@@ -197,6 +216,7 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				Base,
+				"zh-Hans",
 				en,
 			);
 			mainGroup = 4E5E3AB61840FD450ACD38CE;
@@ -229,6 +249,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AA1122334455667788990022 /* Assets.xcassets in Resources */,
+				EE1122334455667788990001 /* Localizable.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -251,6 +272,7 @@
 				CC1122334455667788990011 /* LockEvent.swift in Sources */,
 				CC1122334455667788990022 /* StatsManager.swift in Sources */,
 				CC1122334455667788990033 /* StatsWindow.swift in Sources */,
+				EE1122334455667788990002 /* L10n.swift in Sources */,
 				B8FE6D5BA0E64FC2F79439DA /* main.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

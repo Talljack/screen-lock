@@ -62,7 +62,7 @@ class MenuBarController {
 
         if let button = statusItem?.button {
             configureButtonForState(.normal)
-            button.toolTip = "ScreenLock - 定时锁屏助手"
+            button.toolTip = L("menu.title")
         }
 
         menu = NSMenu()
@@ -70,12 +70,12 @@ class MenuBarController {
 
         // -- Info section --
         countdownMenuItem = NSMenuItem()
-        countdownMenuItem?.attributedTitle = createCountdownAttributedString("加载中...")
+        countdownMenuItem?.attributedTitle = createCountdownAttributedString(L("menu.loading"))
         countdownMenuItem?.isEnabled = false
         menu?.addItem(countdownMenuItem!)
 
         statusIndicatorItem = NSMenuItem()
-        statusIndicatorItem?.attributedTitle = createStatusAttributedString("正常运行")
+        statusIndicatorItem?.attributedTitle = createStatusAttributedString(L("menu.status.normal"))
         statusIndicatorItem?.isEnabled = false
         menu?.addItem(statusIndicatorItem!)
 
@@ -83,14 +83,14 @@ class MenuBarController {
 
         // -- Main toggle + lock now --
         lockEnabledItem = NSMenuItem(
-            title: "定时锁屏",
+            title: L("menu.lock_toggle"),
             action: #selector(toggleLockEnabled(_:)),
             keyEquivalent: ""
         )
         lockEnabledItem?.target = self
         menu?.addItem(lockEnabledItem!)
 
-        let lockNowItem = NSMenuItem(title: "立即锁屏 (⌥⌘L)", action: #selector(lockNow(_:)), keyEquivalent: "")
+        let lockNowItem = NSMenuItem(title: L("menu.lock_now"), action: #selector(lockNow(_:)), keyEquivalent: "")
         lockNowItem.target = self
         if #available(macOS 11.0, *) {
             lockNowItem.image = NSImage(systemSymbolName: "lock.fill", accessibilityDescription: nil)
@@ -100,28 +100,28 @@ class MenuBarController {
         menu?.addItem(.separator())
 
         // -- Schedule submenus --
-        lockTimeParentItem = NSMenuItem(title: "锁屏时间", action: nil, keyEquivalent: "")
+        lockTimeParentItem = NSMenuItem(title: L("menu.lock_time"), action: nil, keyEquivalent: "")
         lockTimeParentItem?.submenu = buildLockTimeSubmenu()
         menu?.addItem(lockTimeParentItem!)
 
-        warningParentItem = NSMenuItem(title: "提前警告", action: nil, keyEquivalent: "")
+        warningParentItem = NSMenuItem(title: L("menu.warning"), action: nil, keyEquivalent: "")
         warningParentItem?.submenu = buildWarningSubmenu()
         menu?.addItem(warningParentItem!)
 
-        breakParentItem = NSMenuItem(title: "休息时长", action: nil, keyEquivalent: "")
+        breakParentItem = NSMenuItem(title: L("menu.break_duration"), action: nil, keyEquivalent: "")
         breakParentItem?.submenu = buildBreakDurationSubmenu()
         menu?.addItem(breakParentItem!)
 
         menu?.addItem(.separator())
 
         // -- Appearance submenu --
-        appearanceParentItem = NSMenuItem(title: "外观设置", action: nil, keyEquivalent: "")
+        appearanceParentItem = NSMenuItem(title: L("menu.appearance"), action: nil, keyEquivalent: "")
         appearanceParentItem?.submenu = buildAppearanceSubmenu()
         menu?.addItem(appearanceParentItem!)
 
         // -- Toggle items --
         preventSleepItem = NSMenuItem(
-            title: "合盖不休眠",
+            title: L("menu.prevent_sleep"),
             action: #selector(togglePreventSleep(_:)),
             keyEquivalent: ""
         )
@@ -130,7 +130,7 @@ class MenuBarController {
 
         if #available(macOS 13.0, *) {
             autoStartItem = NSMenuItem(
-                title: "开机自启动",
+                title: L("menu.auto_start"),
                 action: #selector(toggleAutoStart(_:)),
                 keyEquivalent: ""
             )
@@ -147,30 +147,30 @@ class MenuBarController {
         menu?.addItem(apiStatusItem!)
 
         // -- Bottom section --
-        let statsItem = NSMenuItem(title: "锁屏统计", action: #selector(showStats(_:)), keyEquivalent: "")
+        let statsItem = NSMenuItem(title: L("menu.stats"), action: #selector(showStats(_:)), keyEquivalent: "")
         statsItem.target = self
         if #available(macOS 11.0, *) {
             statsItem.image = NSImage(systemSymbolName: "chart.bar.fill", accessibilityDescription: nil)
         }
         menu?.addItem(statsItem)
 
-        let exportItem = NSMenuItem(title: "导出统计 (CSV)", action: #selector(exportCSV(_:)), keyEquivalent: "")
+        let exportItem = NSMenuItem(title: L("menu.export_csv"), action: #selector(exportCSV(_:)), keyEquivalent: "")
         exportItem.target = self
         menu?.addItem(exportItem)
 
-        let clearStatsItem = NSMenuItem(title: "清除统计数据...", action: #selector(clearStats(_:)), keyEquivalent: "")
+        let clearStatsItem = NSMenuItem(title: L("menu.clear_stats"), action: #selector(clearStats(_:)), keyEquivalent: "")
         clearStatsItem.target = self
         menu?.addItem(clearStatsItem)
 
-        let checkUpdateItem = NSMenuItem(title: "检查更新...", action: #selector(checkForUpdates(_:)), keyEquivalent: "")
+        let checkUpdateItem = NSMenuItem(title: L("menu.check_update"), action: #selector(checkForUpdates(_:)), keyEquivalent: "")
         checkUpdateItem.target = self
         menu?.addItem(checkUpdateItem)
 
-        let aboutItem = NSMenuItem(title: "关于 ScreenLock", action: #selector(showAbout(_:)), keyEquivalent: "")
+        let aboutItem = NSMenuItem(title: L("menu.about"), action: #selector(showAbout(_:)), keyEquivalent: "")
         aboutItem.target = self
         menu?.addItem(aboutItem)
 
-        let quitItem = NSMenuItem(title: "退出", action: #selector(quit(_:)), keyEquivalent: "q")
+        let quitItem = NSMenuItem(title: L("menu.quit"), action: #selector(quit(_:)), keyEquivalent: "q")
         quitItem.target = self
         menu?.addItem(quitItem)
 
@@ -189,7 +189,7 @@ class MenuBarController {
             sub.addItem(item)
         }
         sub.addItem(.separator())
-        customLockTimeItem = NSMenuItem(title: "自定义时间...", action: #selector(customLockTimeSelected(_:)), keyEquivalent: "")
+        customLockTimeItem = NSMenuItem(title: L("menu.custom_time"), action: #selector(customLockTimeSelected(_:)), keyEquivalent: "")
         customLockTimeItem?.target = self
         sub.addItem(customLockTimeItem!)
         return sub
@@ -198,14 +198,14 @@ class MenuBarController {
     private func buildWarningSubmenu() -> NSMenu {
         let sub = NSMenu()
         for duration in [5, 10, 15, 30, 45, 60] {
-            let item = NSMenuItem(title: "\(duration) 分钟", action: #selector(warningDurationSelected(_:)), keyEquivalent: "")
+            let item = NSMenuItem(title: L("unit.minutes", duration), action: #selector(warningDurationSelected(_:)), keyEquivalent: "")
             item.target = self
             item.representedObject = duration
             warningMenuItems.append(item)
             sub.addItem(item)
         }
         sub.addItem(.separator())
-        let customItem = NSMenuItem(title: "自定义...", action: #selector(customWarningDuration(_:)), keyEquivalent: "")
+        let customItem = NSMenuItem(title: L("menu.custom"), action: #selector(customWarningDuration(_:)), keyEquivalent: "")
         customItem.target = self
         sub.addItem(customItem)
         return sub
@@ -214,14 +214,14 @@ class MenuBarController {
     private func buildBreakDurationSubmenu() -> NSMenu {
         let sub = NSMenu()
         for duration in presetBreakDurations {
-            let item = NSMenuItem(title: "\(duration) 分钟", action: #selector(breakDurationSelected(_:)), keyEquivalent: "")
+            let item = NSMenuItem(title: L("unit.minutes", duration), action: #selector(breakDurationSelected(_:)), keyEquivalent: "")
             item.target = self
             item.representedObject = duration
             breakDurationMenuItems.append(item)
             sub.addItem(item)
         }
         sub.addItem(.separator())
-        customBreakDurationItem = NSMenuItem(title: "自定义...", action: #selector(customBreakDurationSelected(_:)), keyEquivalent: "")
+        customBreakDurationItem = NSMenuItem(title: L("menu.custom"), action: #selector(customBreakDurationSelected(_:)), keyEquivalent: "")
         customBreakDurationItem?.target = self
         sub.addItem(customBreakDurationItem!)
         return sub
@@ -230,7 +230,7 @@ class MenuBarController {
     private func buildAppearanceSubmenu() -> NSMenu {
         let sub = NSMenu()
 
-        sub.addItem(makeSectionHeader("主题风格"))
+        sub.addItem(makeSectionHeader(L("appearance.theme_section")))
         for theme in LockScreenTheme.allCases {
             let item = NSMenuItem(title: theme.displayName, action: #selector(themeSelected(_:)), keyEquivalent: "")
             item.target = self
@@ -240,22 +240,22 @@ class MenuBarController {
         }
 
         sub.addItem(.separator())
-        sub.addItem(makeSectionHeader("背景图"))
+        sub.addItem(makeSectionHeader(L("appearance.background_section")))
 
         backgroundStatusItem = NSMenuItem()
         backgroundStatusItem?.isEnabled = false
         sub.addItem(backgroundStatusItem!)
 
-        let chooseItem = NSMenuItem(title: "选择背景图...", action: #selector(chooseBackgroundImage(_:)), keyEquivalent: "")
+        let chooseItem = NSMenuItem(title: L("appearance.choose_bg"), action: #selector(chooseBackgroundImage(_:)), keyEquivalent: "")
         chooseItem.target = self
         sub.addItem(chooseItem)
 
-        clearBackgroundItem = NSMenuItem(title: "使用主题动态背景", action: #selector(clearBackgroundImage(_:)), keyEquivalent: "")
+        clearBackgroundItem = NSMenuItem(title: L("appearance.use_theme_bg"), action: #selector(clearBackgroundImage(_:)), keyEquivalent: "")
         clearBackgroundItem?.target = self
         sub.addItem(clearBackgroundItem!)
 
         sub.addItem(.separator())
-        sub.addItem(makeSectionHeader("当前文案预览"))
+        sub.addItem(makeSectionHeader(L("appearance.copy_preview")))
 
         copyPreviewTitleItem = NSMenuItem()
         copyPreviewTitleItem?.isEnabled = false
@@ -271,17 +271,17 @@ class MenuBarController {
 
         sub.addItem(.separator())
 
-        let editItem = NSMenuItem(title: "编辑锁屏文案...", action: #selector(editLockScreenCopy(_:)), keyEquivalent: "")
+        let editItem = NSMenuItem(title: L("appearance.edit_copy"), action: #selector(editLockScreenCopy(_:)), keyEquivalent: "")
         editItem.target = self
         sub.addItem(editItem)
 
-        let resetItem = NSMenuItem(title: "恢复默认文案", action: #selector(resetLockScreenAppearance(_:)), keyEquivalent: "")
+        let resetItem = NSMenuItem(title: L("appearance.reset_copy"), action: #selector(resetLockScreenAppearance(_:)), keyEquivalent: "")
         resetItem.target = self
         sub.addItem(resetItem)
 
         sub.addItem(.separator())
 
-        let previewItem = NSMenuItem(title: "预览锁屏效果...", action: #selector(showAppearancePreview(_:)), keyEquivalent: "")
+        let previewItem = NSMenuItem(title: L("appearance.preview"), action: #selector(showAppearancePreview(_:)), keyEquivalent: "")
         previewItem.target = self
         if #available(macOS 11.0, *) {
             previewItem.image = NSImage(systemSymbolName: "eye.fill", accessibilityDescription: nil)
@@ -325,9 +325,9 @@ class MenuBarController {
         breakParentItem?.isEnabled = enabled
 
         // Parent item titles show current values
-        lockTimeParentItem?.title = "锁屏时间：\(settings.lockTime)"
-        warningParentItem?.title = "提前警告：\(settings.warningMinutes) 分钟"
-        breakParentItem?.title = "休息时长：\(settings.forcedBreakMinutes) 分钟"
+        lockTimeParentItem?.title = L("menu.lock_time.value", settings.lockTime)
+        warningParentItem?.title = L("menu.warning.value", settings.warningMinutes)
+        breakParentItem?.title = L("menu.break.value", settings.forcedBreakMinutes)
 
         // Lock time submenu checks
         let presetTimes = ["22:00", "23:00", "00:00", "01:00", "02:00"]
@@ -338,7 +338,7 @@ class MenuBarController {
             }
         }
         customLockTimeItem?.state = isCustomTime ? .on : .off
-        customLockTimeItem?.title = isCustomTime ? "自定义时间 (\(settings.lockTime))" : "自定义时间..."
+        customLockTimeItem?.title = isCustomTime ? L("menu.custom_time.value", settings.lockTime) : L("menu.custom_time")
 
         // Warning submenu checks
         for item in warningMenuItems {
@@ -355,11 +355,11 @@ class MenuBarController {
         }
         let isCustomBreak = !presetBreakDurations.contains(settings.forcedBreakMinutes)
         customBreakDurationItem?.state = isCustomBreak ? .on : .off
-        customBreakDurationItem?.title = isCustomBreak ? "自定义 (\(settings.forcedBreakMinutes) 分钟)" : "自定义..."
+        customBreakDurationItem?.title = isCustomBreak ? L("menu.custom.value", settings.forcedBreakMinutes) : L("menu.custom")
 
         // Appearance submenu: theme
         let themeName = settings.appearance.theme.displayName
-        appearanceParentItem?.title = "外观设置：\(themeName)"
+        appearanceParentItem?.title = L("menu.appearance.value", themeName)
         for item in themeMenuItems {
             if let rawValue = item.representedObject as? String {
                 item.state = (rawValue == settings.appearance.theme.rawValue) ? .on : .off
@@ -386,20 +386,20 @@ class MenuBarController {
             let fileExists = FileManager.default.fileExists(atPath: path)
             if fileExists {
                 backgroundStatusItem?.attributedTitle = createStatusAttributedString(
-                    "当前：\(URL(fileURLWithPath: path).lastPathComponent)"
+                    L("appearance.current_bg", URL(fileURLWithPath: path).lastPathComponent)
                 )
                 clearBackgroundItem?.isEnabled = true
-                clearBackgroundItem?.title = "清除背景图（恢复主题背景）"
+                clearBackgroundItem?.title = L("appearance.clear_bg")
             } else {
                 SettingsManager.shared.updateBackgroundImagePath(nil)
-                backgroundStatusItem?.attributedTitle = createStatusAttributedString("当前：主题动态背景")
+                backgroundStatusItem?.attributedTitle = createStatusAttributedString(L("appearance.current_theme_bg"))
                 clearBackgroundItem?.isEnabled = false
-                clearBackgroundItem?.title = "使用主题动态背景"
+                clearBackgroundItem?.title = L("appearance.use_theme_bg")
             }
         } else {
-            backgroundStatusItem?.attributedTitle = createStatusAttributedString("当前：主题动态背景")
+            backgroundStatusItem?.attributedTitle = createStatusAttributedString(L("appearance.current_theme_bg"))
             clearBackgroundItem?.isEnabled = false
-            clearBackgroundItem?.title = "使用主题动态背景"
+            clearBackgroundItem?.title = L("appearance.use_theme_bg")
         }
 
         // Toggle states
@@ -456,11 +456,11 @@ class MenuBarController {
         let statusText: String
         switch state {
         case .normal:
-            statusText = "正常运行"
+            statusText = L("menu.status.normal")
         case .warning:
-            statusText = "可爱提醒已开始"
+            statusText = L("menu.status.warning")
         case .locked:
-            statusText = "强制休息中"
+            statusText = L("menu.status.locked")
         }
         statusIndicatorItem?.attributedTitle = createStatusAttributedString(statusText)
     }
@@ -536,11 +536,11 @@ class MenuBarController {
         let alert = NSAlert()
         alert.messageText = title
         alert.informativeText = message
-        alert.addButton(withTitle: "保存")
-        alert.addButton(withTitle: "取消")
+        alert.addButton(withTitle: L("button.save"))
+        alert.addButton(withTitle: L("button.cancel"))
 
         let field = NSTextField(string: "\(initialValue)")
-        field.placeholderString = "请输入分钟数"
+        field.placeholderString = L("custom_time.placeholder")
         field.frame = NSRect(x: 0, y: 0, width: 220, height: 24)
         alert.accessoryView = field
 
@@ -568,13 +568,13 @@ class MenuBarController {
 
     @objc private func customWarningDuration(_ sender: NSMenuItem) {
         let alert = NSAlert()
-        alert.messageText = "自定义提前警告时间"
-        alert.informativeText = "锁屏前多少分钟开始提醒？（1-120 分钟）"
-        alert.addButton(withTitle: "确定")
-        alert.addButton(withTitle: "取消")
+        alert.messageText = L("custom_warning.title")
+        alert.informativeText = L("custom_warning.message")
+        alert.addButton(withTitle: L("button.confirm"))
+        alert.addButton(withTitle: L("button.cancel"))
 
         let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 120, height: 24))
-        input.placeholderString = "分钟"
+        input.placeholderString = L("unit.minute_input")
         input.stringValue = "\(SettingsManager.shared.settings.warningMinutes)"
         alert.accessoryView = input
 
@@ -597,8 +597,8 @@ class MenuBarController {
 
     @objc private func customBreakDurationSelected(_ sender: NSMenuItem) {
         guard let minutes = promptForPositiveInteger(
-            title: "自定义强制休息时长",
-            message: "输入你想要的分钟数，测试时可以设为 1 分钟。",
+            title: L("custom_break.title"),
+            message: L("custom_break.message"),
             initialValue: SettingsManager.shared.settings.forcedBreakMinutes
         ) else { return }
 
@@ -628,7 +628,7 @@ class MenuBarController {
         } else {
             panel.allowedFileTypes = ["png", "jpg", "jpeg", "heic", "webp"]
         }
-        panel.prompt = "选择背景图"
+        panel.prompt = L("bg.choose_title")
 
         NSApp.activate(ignoringOtherApps: true)
         guard panel.runModal() == .OK, let url = panel.url else { return }
@@ -653,7 +653,7 @@ class MenuBarController {
             backing: .buffered,
             defer: false
         )
-        panel.title = "编辑锁屏文案"
+        panel.title = L("copy_editor.title")
         panel.center()
         panel.isReleasedWhenClosed = false
 
@@ -675,12 +675,12 @@ class MenuBarController {
         }
         headerView.addSubview(iconView)
 
-        let headerTitle = NSTextField(labelWithString: "编辑锁屏文案")
+        let headerTitle = NSTextField(labelWithString: L("copy_editor.title"))
         headerTitle.font = NSFont.systemFont(ofSize: 16, weight: .semibold)
         headerTitle.frame = NSRect(x: margin + 50, y: 24, width: 300, height: 22)
         headerView.addSubview(headerTitle)
 
-        let headerSub = NSTextField(labelWithString: "自定义锁屏时显示的文案，让提醒更有你的风格")
+        let headerSub = NSTextField(labelWithString: L("copy_editor.subtitle"))
         headerSub.font = NSFont.systemFont(ofSize: 12)
         headerSub.textColor = .secondaryLabelColor
         headerSub.frame = NSRect(x: margin + 50, y: 6, width: 300, height: 18)
@@ -700,49 +700,49 @@ class MenuBarController {
 
         // Title field
         y -= 48
-        let titleLabel = NSTextField(labelWithString: "标题（锁屏主文案）")
+        let titleLabel = NSTextField(labelWithString: L("copy_editor.field.title"))
         titleLabel.font = NSFont.systemFont(ofSize: 12, weight: .medium)
         titleLabel.textColor = .secondaryLabelColor
         titleLabel.frame = NSRect(x: margin, y: y + fieldHeight + 4, width: fieldWidth, height: 16)
         content.addSubview(titleLabel)
 
         let titleField = NSTextField(string: appearance.titleText)
-        titleField.placeholderString = "例如：该睡觉啦~"
+        titleField.placeholderString = L("copy_editor.field.title_placeholder")
         titleField.font = NSFont.systemFont(ofSize: 14)
         titleField.frame = NSRect(x: margin, y: y, width: fieldWidth, height: fieldHeight)
         content.addSubview(titleField)
 
         // Subtitle field
         y -= 56
-        let subLabel = NSTextField(labelWithString: "副标题")
+        let subLabel = NSTextField(labelWithString: L("copy_editor.field.subtitle"))
         subLabel.font = NSFont.systemFont(ofSize: 12, weight: .medium)
         subLabel.textColor = .secondaryLabelColor
         subLabel.frame = NSRect(x: margin, y: y + fieldHeight + 4, width: fieldWidth, height: 16)
         content.addSubview(subLabel)
 
         let subtitleField = NSTextField(string: appearance.subtitleText)
-        subtitleField.placeholderString = "例如：早睡早起身体好"
+        subtitleField.placeholderString = L("copy_editor.field.subtitle_placeholder")
         subtitleField.font = NSFont.systemFont(ofSize: 14)
         subtitleField.frame = NSRect(x: margin, y: y, width: fieldWidth, height: fieldHeight)
         content.addSubview(subtitleField)
 
         // Footer field
         y -= 56
-        let footerLabel = NSTextField(labelWithString: "底部提示")
+        let footerLabel = NSTextField(labelWithString: L("copy_editor.field.footer"))
         footerLabel.font = NSFont.systemFont(ofSize: 12, weight: .medium)
         footerLabel.textColor = .secondaryLabelColor
         footerLabel.frame = NSRect(x: margin, y: y + fieldHeight + 4, width: fieldWidth, height: 16)
         content.addSubview(footerLabel)
 
         let footerField = NSTextField(string: appearance.footerText)
-        footerField.placeholderString = "例如：锁屏结束后自动跳转系统锁屏"
+        footerField.placeholderString = L("copy_editor.field.footer_placeholder")
         footerField.font = NSFont.systemFont(ofSize: 14)
         footerField.frame = NSRect(x: margin, y: y, width: fieldWidth, height: fieldHeight)
         content.addSubview(footerField)
 
         // Preview label
         y -= 36
-        let previewLabel = NSTextField(labelWithString: "预览效果")
+        let previewLabel = NSTextField(labelWithString: L("copy_editor.preview"))
         previewLabel.font = NSFont.systemFont(ofSize: 12, weight: .medium)
         previewLabel.textColor = .secondaryLabelColor
         previewLabel.frame = NSRect(x: margin, y: y, width: fieldWidth, height: 16)
@@ -767,12 +767,12 @@ class MenuBarController {
 
         // Buttons
         y -= 48
-        let saveBtn = NSButton(title: "保存", target: nil, action: nil)
+        let saveBtn = NSButton(title: L("button.save"), target: nil, action: nil)
         saveBtn.bezelStyle = .rounded
         saveBtn.keyEquivalent = "\r"
         saveBtn.frame = NSRect(x: content.bounds.width - margin - 80, y: y, width: 80, height: 32)
 
-        let cancelBtn = NSButton(title: "取消", target: nil, action: nil)
+        let cancelBtn = NSButton(title: L("button.cancel"), target: nil, action: nil)
         cancelBtn.bezelStyle = .rounded
         cancelBtn.keyEquivalent = "\u{1b}"
         cancelBtn.frame = NSRect(x: content.bounds.width - margin - 170, y: y, width: 80, height: 32)
@@ -837,7 +837,7 @@ class MenuBarController {
             backing: .buffered,
             defer: false
         )
-        panel.title = "锁屏预览 — \(appearance.theme.displayName)"
+        panel.title = L("preview.title", appearance.theme.displayName)
         panel.center()
         panel.isReleasedWhenClosed = false
         panel.isFloatingPanel = true
@@ -992,10 +992,10 @@ class MenuBarController {
 
     @objc private func customLockTimeSelected(_ sender: NSMenuItem) {
         let alert = NSAlert()
-        alert.messageText = "自定义锁屏时间"
-        alert.informativeText = "输入 24 小时制时间，格式：HH:mm（例如 23:30）"
-        alert.addButton(withTitle: "保存")
-        alert.addButton(withTitle: "取消")
+        alert.messageText = L("custom_time.title")
+        alert.informativeText = L("custom_time.message")
+        alert.addButton(withTitle: L("button.save"))
+        alert.addButton(withTitle: L("button.cancel"))
 
         let field = NSTextField(string: SettingsManager.shared.settings.lockTime)
         field.placeholderString = "HH:mm"
@@ -1009,8 +1009,8 @@ class MenuBarController {
         let parts = input.split(separator: ":").compactMap { Int($0) }
         guard parts.count == 2, (0...23).contains(parts[0]), (0...59).contains(parts[1]) else {
             let err = NSAlert()
-            err.messageText = "时间格式错误"
-            err.informativeText = "请输入有效的 HH:mm 格式，例如 23:30"
+            err.messageText = L("custom_time.error.title")
+            err.informativeText = L("custom_time.error.message")
             err.runModal()
             return
         }
@@ -1040,7 +1040,7 @@ class MenuBarController {
             SettingsManager.shared.updateAutoStart(newValue)
         } catch {
             let alert = NSAlert()
-            alert.messageText = "设置开机自启动失败"
+            alert.messageText = L("autostart.error")
             alert.informativeText = error.localizedDescription
             alert.runModal()
         }
@@ -1074,7 +1074,7 @@ class MenuBarController {
             try csv.write(to: url, atomically: true, encoding: .utf8)
         } catch {
             let alert = NSAlert()
-            alert.messageText = "导出失败"
+            alert.messageText = L("export.error")
             alert.informativeText = error.localizedDescription
             alert.runModal()
         }
@@ -1101,10 +1101,10 @@ class MenuBarController {
 
                 if let error = error {
                     self?.showUpdateAlert(
-                        title: "检查更新失败",
-                        message: "无法连接到更新服务器：\(error.localizedDescription)",
+                        title: L("update.check_failed"),
+                        message: L("update.check_failed.message", error.localizedDescription),
                         icon: appIcon,
-                        primaryButton: "好的"
+                        primaryButton: L("button.ok")
                     )
                     return
                 }
@@ -1115,31 +1115,32 @@ class MenuBarController {
                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                       let tagName = json["tag_name"] as? String else {
                     self?.showUpdateAlert(
-                        title: "当前已是最新版本",
-                        message: "ScreenLock v\(currentVersion) 已是最新版本。",
+                        title: L("update.up_to_date"),
+                        message: L("update.up_to_date.message", currentVersion),
                         icon: appIcon,
-                        primaryButton: "好的"
+                        primaryButton: L("button.ok")
                     )
                     return
                 }
 
                 let latestVersion = tagName.hasPrefix("v") ? String(tagName.dropFirst()) : tagName
-                let releaseNotes = json["body"] as? String ?? "暂无更新说明"
+                let releaseNotes = json["body"] as? String ?? L("update.no_notes")
                 let htmlURL = json["html_url"] as? String ?? ""
 
                 if latestVersion.compare(currentVersion, options: .numeric) == .orderedDescending {
                     let alert = NSAlert()
-                    alert.messageText = "发现新版本 v\(latestVersion) 🎉"
+                    alert.messageText = L("update.new_version", latestVersion)
+                    let notes = String(releaseNotes.prefix(500))
                     alert.informativeText = """
-                        当前版本：v\(currentVersion)
-                        最新版本：v\(latestVersion)
+                        \(L("update.current_version", currentVersion))
+                        \(L("update.latest_version", latestVersion))
 
-                        更新日志：
-                        \(String(releaseNotes.prefix(500)))
+                        \(L("update.changelog"))
+                        \(notes)
                         """
                     alert.icon = appIcon
-                    alert.addButton(withTitle: "立即更新")
-                    alert.addButton(withTitle: "稍后再说")
+                    alert.addButton(withTitle: L("update.install"))
+                    alert.addButton(withTitle: L("update.later"))
                     NSApp.activate(ignoringOtherApps: true)
                     let resp = alert.runModal()
 
@@ -1150,10 +1151,10 @@ class MenuBarController {
                     }
                 } else {
                     self?.showUpdateAlert(
-                        title: "当前已是最新版本",
-                        message: "ScreenLock v\(currentVersion) 已是最新版本。",
+                        title: L("update.up_to_date"),
+                        message: L("update.up_to_date.message", currentVersion),
                         icon: appIcon,
-                        primaryButton: "好的"
+                        primaryButton: L("button.ok")
                     )
                 }
             }
@@ -1172,11 +1173,11 @@ class MenuBarController {
 
     @objc private func clearStats(_ sender: NSMenuItem) {
         let alert = NSAlert()
-        alert.messageText = "确定要清除所有统计数据吗？"
-        alert.informativeText = "这将删除所有锁屏记录和成就进度，此操作不可撤销。"
+        alert.messageText = L("clear_stats.title")
+        alert.informativeText = L("clear_stats.message")
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "清除")
-        alert.addButton(withTitle: "取消")
+        alert.addButton(withTitle: L("button.clear"))
+        alert.addButton(withTitle: L("button.cancel"))
 
         NSApp.activate(ignoringOtherApps: true)
         guard alert.runModal() == .alertFirstButtonReturn else { return }
@@ -1192,18 +1193,18 @@ class MenuBarController {
         let alert = NSAlert()
         alert.messageText = "ScreenLock"
         alert.informativeText = """
-            版本 \(version)
+            \(L("about.version", version))
 
-            可爱的定时锁屏助手，帮你养成健康的睡眠习惯。
+            \(L("about.description"))
 
-            全局快捷键：⌥⌘L 立即锁屏
+            \(L("about.hotkey"))
             """
         if let appIcon = NSImage(named: "AppIcon") {
             alert.icon = appIcon
         } else if let appIcon = NSApp.applicationIconImage {
             alert.icon = appIcon
         }
-        alert.addButton(withTitle: "好的")
+        alert.addButton(withTitle: L("button.ok"))
         NSApp.activate(ignoringOtherApps: true)
         alert.runModal()
     }

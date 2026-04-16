@@ -21,12 +21,12 @@ struct Achievement: Equatable {
     let requirement: Int
 
     static let all: [Achievement] = [
-        Achievement(id: "streak3",  title: "早睡新手",  description: "连续 3 天按时锁屏",  emoji: "🌱", requirement: 3),
-        Achievement(id: "streak7",  title: "睡眠卫士",  description: "连续 7 天按时锁屏",  emoji: "🛡️", requirement: 7),
-        Achievement(id: "streak14", title: "作息达人",  description: "连续 14 天按时锁屏", emoji: "⭐", requirement: 14),
-        Achievement(id: "streak30", title: "健康冠军",  description: "连续 30 天按时锁屏", emoji: "👑", requirement: 30),
-        Achievement(id: "total10",  title: "起步之星",  description: "累计锁屏 10 次",    emoji: "✨", requirement: 10),
-        Achievement(id: "total50",  title: "坚持有方",  description: "累计锁屏 50 次",    emoji: "💪", requirement: 50),
-        Achievement(id: "total100", title: "月光使者",  description: "累计锁屏 100 次",   emoji: "🌙", requirement: 100),
+        Achievement(id: "streak3",  title: L("achievement.streak3.title"),  description: L("achievement.streak3.desc"),  emoji: "🌱", requirement: 3),
+        Achievement(id: "streak7",  title: L("achievement.streak7.title"),  description: L("achievement.streak7.desc"),  emoji: "🛡️", requirement: 7),
+        Achievement(id: "streak14", title: L("achievement.streak14.title"), description: L("achievement.streak14.desc"), emoji: "⭐", requirement: 14),
+        Achievement(id: "streak30", title: L("achievement.streak30.title"), description: L("achievement.streak30.desc"), emoji: "👑", requirement: 30),
+        Achievement(id: "total10",  title: L("achievement.total10.title"),  description: L("achievement.total10.desc"),    emoji: "✨", requirement: 10),
+        Achievement(id: "total50",  title: L("achievement.total50.title"),  description: L("achievement.total50.desc"),    emoji: "💪", requirement: 50),
+        Achievement(id: "total100", title: L("achievement.total100.title"), description: L("achievement.total100.desc"),   emoji: "🌙", requirement: 100),
     ]
 }

@@ -29,7 +29,7 @@ class PowerManager {
             statusMessage = nil
             os_log("Sleep prevention enabled", log: log, type: .info)
         } else {
-            statusMessage = "合盖不休眠功能不可用"
+            statusMessage = L("status.sleep_unavailable")
             os_log("Failed to enable sleep prevention, error: %d", log: log, type: .error, result)
         }
     }

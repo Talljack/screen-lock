@@ -136,8 +136,8 @@ class ScheduleManager {
 
     private func sendWarningNotification(minutesLeft: Int) {
         let content = UNMutableNotificationContent()
-        content.title = "该准备休息啦 🌙"
-        content.body = "还有 \(minutesLeft) 分钟就要锁屏了，快保存工作吧~"
+        content.title = L("warning.notification.title")
+        content.body = L("warning.notification.body", minutesLeft)
         content.sound = .default
 
         let request = UNNotificationRequest(
@@ -167,26 +167,26 @@ class ScheduleManager {
         let settings = SettingsManager.shared.settings
 
         if !settings.lockEnabled {
-            return "定时锁屏已禁用"
+            return L("schedule.disabled")
         }
 
         let now = Date()
         guard let lockTime = nextLockTime(for: settings, now: now) else {
-            return "时间格式错误"
+            return L("schedule.format_error")
         }
 
         let interval = lockTime.timeIntervalSince(now)
         if interval < 0 {
-            return "已过锁屏时间"
+            return L("schedule.past_time")
         }
 
         let hours = Int(interval) / 3600
         let minutes = (Int(interval) % 3600) / 60
 
         if hours > 0 {
-            return "距离锁屏还有 \(hours)小时\(minutes)分钟"
+            return L("schedule.countdown.hours", hours, minutes)
         } else {
-            return "距离锁屏还有 \(minutes)分钟"
+            return L("schedule.countdown.minutes", minutes)
         }
     }
 

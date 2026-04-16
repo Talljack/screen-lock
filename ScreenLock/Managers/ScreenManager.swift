@@ -69,7 +69,7 @@ class ScreenManager {
 
             guard result == .success else {
                 os_log("Failed to read gamma for display %{public}d", log: log, type: .error, display)
-                statusMessage = "屏幕控制功能不可用"
+                statusMessage = L("status.screen_unavailable")
                 continue
             }
 
@@ -224,7 +224,7 @@ class ScreenManager {
             os_log("macOS system lock triggered", log: log, type: .info)
         } catch {
             os_log("Failed to trigger system lock: %{public}@", log: log, type: .error, error.localizedDescription)
-            statusMessage = "系统锁屏功能不可用"
+            statusMessage = L("status.lock_unavailable")
         }
     }
 

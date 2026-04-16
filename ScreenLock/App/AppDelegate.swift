@@ -41,9 +41,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         StatsManager.shared.onNewAchievement = { achievement in
             DispatchQueue.main.async {
                 let alert = NSAlert()
-                alert.messageText = "\(achievement.emoji) 成就解锁！"
+                alert.messageText = L("achievement.unlocked", achievement.emoji)
                 alert.informativeText = "\(achievement.title) — \(achievement.description)"
-                alert.addButton(withTitle: "太棒了！")
+                alert.addButton(withTitle: L("achievement.awesome"))
                 NSApp.activate(ignoringOtherApps: true)
                 alert.runModal()
             }
@@ -81,17 +81,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if !trusted {
             DispatchQueue.main.async {
                 let alert = NSAlert()
-                alert.messageText = "需要辅助功能权限"
-                alert.informativeText = """
-                    ScreenLock 需要「辅助功能」权限来控制屏幕亮度和锁屏。
-
-                    请前往：系统设置 → 隐私与安全性 → 辅助功能，
-                    找到 ScreenLock 并开启权限。
-
-                    开启后 app 即可正常工作。
-                    """
-                alert.addButton(withTitle: "打开系统设置")
-                alert.addButton(withTitle: "稍后再说")
+                alert.messageText = L("permission.title")
+                alert.informativeText = L("permission.message")
+                alert.addButton(withTitle: L("permission.open_settings"))
+                alert.addButton(withTitle: L("permission.later"))
 
                 NSApp.activate(ignoringOtherApps: true)
                 let response = alert.runModal()
