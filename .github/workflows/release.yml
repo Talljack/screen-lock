@@ -35,16 +35,27 @@ jobs:
       - name: Resolve package dependencies
         run: xcodebuild -project ScreenLock.xcodeproj -scheme ScreenLock -resolvePackageDependencies
 
-      - name: Build Release archive
+      - name: Build Release archive (universal x86_64 + arm64)
         run: |
           xcodebuild -project ScreenLock.xcodeproj \
             -scheme ScreenLock \
             -configuration Release \
             -archivePath build/ScreenLock.xcarchive \
             archive \
+            ARCHS="x86_64 arm64" \
+            ONLY_ACTIVE_ARCH=NO \
             CODE_SIGN_IDENTITY="-" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
+
+      - name: Verify universal binary
+        run: |
+          BIN="build/ScreenLock.xcarchive/Products/Applications/ScreenLock.app/Contents/MacOS/ScreenLock"
+          lipo -info "$BIN"
+          lipo -info "$BIN" | grep -q "x86_64 arm64\|arm64 x86_64" || {
+            echo "::error::Binary is not universal"
+            exit 1
+          }
 
       - name: Export app from archive
         run: |
@@ -98,16 +109,27 @@ jobs:
 
       - name: Generate release notes
         run: |
-          cat > build/release_notes.md << 'NOTES_EOF'
+          PREV_TAG=$(git tag --sort=-v:refname | grep -v "^${{ steps.version.outputs.tag }}$" | head -1 || true)
+          if [ -n "$PREV_TAG" ]; then
+            COMPARE_URL="https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${{ steps.version.outputs.tag }}"
+            COMPARE_LINE="See [changes since ${PREV_TAG}](${COMPARE_URL}) for full details."
+          else
+            COMPARE_LINE="See [commit history](https://github.com/${{ github.repository }}/commits/${{ steps.version.outputs.tag }})."
+          fi
+          cat > build/release_notes.md << NOTES_EOF
           ## ScreenLock ${{ steps.version.outputs.tag }}
 
+          ### Highlights
+          - Universal binary — runs natively on Intel (x86_64) and Apple Silicon (arm64) Macs
+
           ### Changes
-          See [commit history](https://github.com/${{ github.repository }}/compare/.../${{ steps.version.outputs.tag }}) for full details.
+          ${COMPARE_LINE}
 
           ### Install
-          1. Download `ScreenLock.dmg` below
-          2. Open the DMG and drag `ScreenLock.app` to `Applications`
-          3. Launch — the app runs in the menu bar
+          1. Download \`ScreenLock.dmg\` below
+          2. Open the DMG and drag \`ScreenLock.app\` to \`Applications\`
+          3. First launch: if macOS blocks the app as "damaged", run \`xattr -cr /Applications/ScreenLock.app\` in Terminal, then launch again
+          4. The app runs in the menu bar
           NOTES_EOF
 
       - name: Update appcast.xml
@@ -140,7 +162,7 @@ jobs:
                       <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
                       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
                       <enclosure url="${URL}"
-                                 type="application/octet-stream"
+                                 type="application/x-apple-diskimage"
                                  ${SIG_ATTR}
                                  length="${LEN}"/>
                   </item>
