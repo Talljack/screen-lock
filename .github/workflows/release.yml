@@ -51,12 +51,6 @@ jobs:
           mkdir -p build/export
           cp -R build/ScreenLock.xcarchive/Products/Applications/ScreenLock.app build/export/
 
-      - name: Create ZIP
-        run: |
-          cd build/export
-          zip -r -y ScreenLock.zip ScreenLock.app
-          mv ScreenLock.zip ../
-
       - name: Create DMG
         run: |
           DMG_DIR="build/dmg_staging"
@@ -74,7 +68,7 @@ jobs:
         env:
           SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
         run: |
-          LENGTH=$(stat -f%z build/ScreenLock.zip)
+          LENGTH=$(stat -f%z build/ScreenLock.dmg)
           echo "length=$LENGTH" >> "$GITHUB_OUTPUT"
 
           if [ -z "$SPARKLE_ED_PRIVATE_KEY" ]; then
@@ -91,7 +85,7 @@ jobs:
           fi
 
           echo "$SPARKLE_ED_PRIVATE_KEY" > /tmp/sparkle_key.txt
-          RESULT=$("$SPARKLE_SIGN" build/ScreenLock.zip -f /tmp/sparkle_key.txt 2>&1) || true
+          RESULT=$("$SPARKLE_SIGN" build/ScreenLock.dmg -f /tmp/sparkle_key.txt 2>&1) || true
           rm -f /tmp/sparkle_key.txt
 
           SIG=$(echo "$RESULT" | grep -o 'sparkle:edSignature="[^"]*"' | sed 's/sparkle:edSignature="//;s/"$//')
@@ -111,15 +105,8 @@ jobs:
           See [commit history](https://github.com/${{ github.repository }}/compare/.../${{ steps.version.outputs.tag }}) for full details.
 
           ### Install
-
-          **DMG (recommended)**
           1. Download `ScreenLock.dmg` below
           2. Open the DMG and drag `ScreenLock.app` to `Applications`
-          3. Launch — the app runs in the menu bar
-
-          **ZIP**
-          1. Download `ScreenLock.zip` below
-          2. Unzip and move `ScreenLock.app` to `/Applications`
           3. Launch — the app runs in the menu bar
           NOTES_EOF
 
@@ -132,7 +119,7 @@ jobs:
           LEN="${{ steps.sign.outputs.length }}"
           DATE=$(date -u "+%a, %d %b %Y %H:%M:%S +0000")
           REPO="${{ github.repository }}"
-          URL="https://github.com/${REPO}/releases/download/${TAG}/ScreenLock.zip"
+          URL="https://github.com/${REPO}/releases/download/${TAG}/ScreenLock.dmg"
           SIG_ATTR=""
           if [ -n "$SIG" ]; then
             SIG_ATTR="sparkle:edSignature=\"${SIG}\""
@@ -166,9 +153,7 @@ jobs:
         with:
           name: ScreenLock ${{ steps.version.outputs.tag }}
           body_path: build/release_notes.md
-          files: |
-            build/ScreenLock.zip
-            build/ScreenLock.dmg
+          files: build/ScreenLock.dmg
           draft: false
           prerelease: false
 
