@@ -4,38 +4,112 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (e.g. v1.0.1). Must already exist."
+        required: true
+        type: string
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build-and-release:
     runs-on: macos-14
+    timeout-minutes: 60
     steps:
+      - name: Resolve tag
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
+          case "$TAG" in
+            v[0-9]*) ;;
+            *) echo "::error::Invalid tag format: $TAG (expected vX.Y.Z)"; exit 1 ;;
+          esac
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.version.outputs.tag }}
+          fetch-depth: 0
+
+      - name: Verify required secrets
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+        run: |
+          missing=()
+          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID SPARKLE_ED_PRIVATE_KEY; do
+            if [ -z "${!name}" ]; then missing+=("$name"); fi
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing secrets: ${missing[*]}"
+            exit 1
+          fi
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
 
-      - name: Extract version from tag
-        id: version
-        run: |
-          TAG="${GITHUB_REF#refs/tags/v}"
-          echo "version=$TAG" >> "$GITHUB_OUTPUT"
-          echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
-
       - name: Set version in Info.plist
         run: |
-          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${{ steps.version.outputs.version }}" \
-            ScreenLock/App/Info.plist
-          BUILD_NUMBER=$(echo "${{ steps.version.outputs.version }}" | tr -d '.')
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" \
-            ScreenLock/App/Info.plist
+          VERSION="${{ steps.version.outputs.version }}"
+          BUILD=$(git rev-list --count HEAD)
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" ScreenLock/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD" ScreenLock/App/Info.plist
+          echo "build=$BUILD" >> "$GITHUB_ENV"
+
+      - name: Cache SwiftPM
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+            ~/Library/Caches/org.swift.swiftpm
+          key: spm-${{ runner.os }}-${{ hashFiles('**/Package.resolved', 'ScreenLock.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: spm-${{ runner.os }}-
+
+      - name: Import signing certificate
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain"
+          KEYCHAIN_PASSWORD=$(openssl rand -hex 16)
+          P12_PATH="$RUNNER_TEMP/cert.p12"
+
+          echo -n "$APPLE_CERTIFICATE" | base64 --decode > "$P12_PATH"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$P12_PATH" -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH" > /dev/null
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
+          security find-identity -p codesigning -v "$KEYCHAIN_PATH"
+
+          rm -f "$P12_PATH"
+          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
 
       - name: Resolve package dependencies
         run: xcodebuild -project ScreenLock.xcodeproj -scheme ScreenLock -resolvePackageDependencies
 
       - name: Build Release archive (universal x86_64 + arm64)
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           xcodebuild -project ScreenLock.xcodeproj \
             -scheme ScreenLock \
@@ -44,23 +118,55 @@ jobs:
             archive \
             ARCHS="x86_64 arm64" \
             ONLY_ACTIVE_ARCH=NO \
-            CODE_SIGN_IDENTITY="-" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Developer ID Application" \
+            OTHER_CODE_SIGN_FLAGS="--timestamp --options=runtime"
 
       - name: Verify universal binary
         run: |
           BIN="build/ScreenLock.xcarchive/Products/Applications/ScreenLock.app/Contents/MacOS/ScreenLock"
           lipo -info "$BIN"
-          lipo -info "$BIN" | grep -q "x86_64 arm64\|arm64 x86_64" || {
+          lipo -info "$BIN" | grep -qE "x86_64 arm64|arm64 x86_64" || {
             echo "::error::Binary is not universal"
             exit 1
           }
 
-      - name: Export app from archive
+      - name: Export and verify signature
         run: |
           mkdir -p build/export
           cp -R build/ScreenLock.xcarchive/Products/Applications/ScreenLock.app build/export/
+          codesign --verify --deep --strict --verbose=2 build/export/ScreenLock.app
+          codesign -dv --entitlements :- build/export/ScreenLock.app 2>&1 | head -30
+
+      - name: Notarize and staple .app
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -o pipefail
+          ZIP="$RUNNER_TEMP/ScreenLock.zip"
+          ditto -c -k --keepParent build/export/ScreenLock.app "$ZIP"
+
+          SUBMIT_LOG="$RUNNER_TEMP/notarize-app.log"
+          if ! xcrun notarytool submit "$ZIP" \
+               --apple-id "$APPLE_ID" \
+               --password "$APPLE_PASSWORD" \
+               --team-id "$APPLE_TEAM_ID" \
+               --wait --timeout 30m 2>&1 | tee "$SUBMIT_LOG"; then
+            SUBMIT_ID=$(grep -oE 'id: [a-f0-9-]+' "$SUBMIT_LOG" | head -1 | awk '{print $2}')
+            if [ -n "$SUBMIT_ID" ]; then
+              echo "::group::Notarization log for $SUBMIT_ID"
+              xcrun notarytool log "$SUBMIT_ID" \
+                --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID" || true
+              echo "::endgroup::"
+            fi
+            exit 1
+          fi
+          xcrun stapler staple build/export/ScreenLock.app
+          xcrun stapler validate build/export/ScreenLock.app
+          rm -f "$ZIP"
 
       - name: Create DMG
         run: |
@@ -68,11 +174,40 @@ jobs:
           mkdir -p "$DMG_DIR"
           cp -R build/export/ScreenLock.app "$DMG_DIR/"
           ln -s /Applications "$DMG_DIR/Applications"
-
           hdiutil create -volname "ScreenLock" \
             -srcfolder "$DMG_DIR" \
             -ov -format UDZO \
             "build/ScreenLock.dmg"
+
+      - name: Sign DMG
+        run: |
+          codesign --force --sign "Developer ID Application" --timestamp build/ScreenLock.dmg
+          codesign --verify --verbose=2 build/ScreenLock.dmg
+
+      - name: Notarize DMG
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -o pipefail
+          SUBMIT_LOG="$RUNNER_TEMP/notarize.log"
+          if ! xcrun notarytool submit build/ScreenLock.dmg \
+               --apple-id "$APPLE_ID" \
+               --password "$APPLE_PASSWORD" \
+               --team-id "$APPLE_TEAM_ID" \
+               --wait --timeout 30m 2>&1 | tee "$SUBMIT_LOG"; then
+            SUBMIT_ID=$(grep -oE 'id: [a-f0-9-]+' "$SUBMIT_LOG" | head -1 | awk '{print $2}')
+            if [ -n "$SUBMIT_ID" ]; then
+              echo "::group::Notarization log for $SUBMIT_ID"
+              xcrun notarytool log "$SUBMIT_ID" \
+                --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID" || true
+              echo "::endgroup::"
+            fi
+            exit 1
+          fi
+          xcrun stapler staple build/ScreenLock.dmg
+          xcrun stapler validate build/ScreenLock.dmg
 
       - name: Sign update with Sparkle
         id: sign
@@ -82,45 +217,41 @@ jobs:
           LENGTH=$(stat -f%z build/ScreenLock.dmg)
           echo "length=$LENGTH" >> "$GITHUB_OUTPUT"
 
-          if [ -z "$SPARKLE_ED_PRIVATE_KEY" ]; then
-            echo "signature=" >> "$GITHUB_OUTPUT"
-            echo "::warning::SPARKLE_ED_PRIVATE_KEY not set, skipping signature"
-            exit 0
-          fi
-
-          SPARKLE_SIGN=$(find ~/Library/Developer/Xcode/DerivedData -name "sign_update" -path "*/artifacts/*" 2>/dev/null | head -1)
+          SPARKLE_SIGN=$(find ~/Library/Developer/Xcode/DerivedData -name sign_update -type f -perm +111 2>/dev/null | head -1)
           if [ -z "$SPARKLE_SIGN" ]; then
-            echo "::warning::sign_update tool not found, skipping signature"
-            echo "signature=" >> "$GITHUB_OUTPUT"
-            exit 0
+            echo "::error::sign_update tool not found in DerivedData"
+            exit 1
           fi
+          echo "Using: $SPARKLE_SIGN"
 
-          echo "$SPARKLE_ED_PRIVATE_KEY" > /tmp/sparkle_key.txt
-          RESULT=$("$SPARKLE_SIGN" build/ScreenLock.dmg -f /tmp/sparkle_key.txt 2>&1) || true
-          rm -f /tmp/sparkle_key.txt
+          KEY_FILE="$RUNNER_TEMP/sparkle_key.txt"
+          printf '%s' "$SPARKLE_ED_PRIVATE_KEY" > "$KEY_FILE"
+          RESULT=$("$SPARKLE_SIGN" build/ScreenLock.dmg -f "$KEY_FILE")
+          rm -f "$KEY_FILE"
 
-          SIG=$(echo "$RESULT" | grep -o 'sparkle:edSignature="[^"]*"' | sed 's/sparkle:edSignature="//;s/"$//')
-          if [ -n "$SIG" ]; then
-            echo "signature=$SIG" >> "$GITHUB_OUTPUT"
-          else
-            echo "::warning::Could not extract signature, output was: $RESULT"
-            echo "signature=" >> "$GITHUB_OUTPUT"
+          SIG=$(echo "$RESULT" | grep -oE 'sparkle:edSignature="[^"]+"' | sed 's/sparkle:edSignature="//;s/"$//')
+          if [ -z "$SIG" ]; then
+            echo "::error::Could not extract signature. Output: $RESULT"
+            exit 1
           fi
+          echo "signature=$SIG" >> "$GITHUB_OUTPUT"
 
       - name: Generate release notes
         run: |
-          PREV_TAG=$(git tag --sort=-v:refname | grep -v "^${{ steps.version.outputs.tag }}$" | head -1 || true)
+          TAG="${{ steps.version.outputs.tag }}"
+          PREV_TAG=$(git tag --sort=-v:refname | grep -v "^${TAG}$" | head -1 || true)
           if [ -n "$PREV_TAG" ]; then
-            COMPARE_URL="https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${{ steps.version.outputs.tag }}"
+            COMPARE_URL="https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${TAG}"
             COMPARE_LINE="See [changes since ${PREV_TAG}](${COMPARE_URL}) for full details."
           else
-            COMPARE_LINE="See [commit history](https://github.com/${{ github.repository }}/commits/${{ steps.version.outputs.tag }})."
+            COMPARE_LINE="See [commit history](https://github.com/${{ github.repository }}/commits/${TAG})."
           fi
           cat > build/release_notes.md << NOTES_EOF
-          ## ScreenLock ${{ steps.version.outputs.tag }}
+          ## ScreenLock ${TAG}
 
           ### Highlights
           - Universal binary — runs natively on Intel (x86_64) and Apple Silicon (arm64) Macs
+          - Signed with Developer ID and notarized by Apple — no Gatekeeper warnings
 
           ### Changes
           ${COMPARE_LINE}
@@ -128,24 +259,19 @@ jobs:
           ### Install
           1. Download \`ScreenLock.dmg\` below
           2. Open the DMG and drag \`ScreenLock.app\` to \`Applications\`
-          3. First launch: if macOS blocks the app as "damaged", run \`xattr -cr /Applications/ScreenLock.app\` in Terminal, then launch again
-          4. The app runs in the menu bar
+          3. The app runs in the menu bar
           NOTES_EOF
 
-      - name: Update appcast.xml
+      - name: Generate appcast.xml
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           TAG="${{ steps.version.outputs.tag }}"
-          BUILD=$(echo "$VERSION" | tr -d '.')
+          BUILD="$build"
           SIG="${{ steps.sign.outputs.signature }}"
           LEN="${{ steps.sign.outputs.length }}"
           DATE=$(date -u "+%a, %d %b %Y %H:%M:%S +0000")
           REPO="${{ github.repository }}"
           URL="https://github.com/${REPO}/releases/download/${TAG}/ScreenLock.dmg"
-          SIG_ATTR=""
-          if [ -n "$SIG" ]; then
-            SIG_ATTR="sparkle:edSignature=\"${SIG}\""
-          fi
 
           cat > appcast.xml << APPCAST_EOF
           <?xml version="1.0" encoding="utf-8"?>
@@ -163,33 +289,54 @@ jobs:
                       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
                       <enclosure url="${URL}"
                                  type="application/x-apple-diskimage"
-                                 ${SIG_ATTR}
+                                 sparkle:edSignature="${SIG}"
                                  length="${LEN}"/>
                   </item>
               </channel>
           </rss>
           APPCAST_EOF
+          cp appcast.xml "$RUNNER_TEMP/appcast.xml"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.version.outputs.tag }}
           name: ScreenLock ${{ steps.version.outputs.tag }}
           body_path: build/release_notes.md
           files: build/ScreenLock.dmg
           draft: false
           prerelease: false
 
-      - name: Push updated appcast.xml
+      - name: Push updated appcast.xml to main
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git stash
           git fetch origin main
           git checkout main
-          git stash pop || true
-          cp appcast.xml . 2>/dev/null || true
+          cp "$RUNNER_TEMP/appcast.xml" appcast.xml
           git add appcast.xml
-          git diff --cached --quiet || git commit -m "chore: update appcast.xml for ${{ steps.version.outputs.tag }}"
-          git push https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git main
+          if git diff --cached --quiet; then
+            echo "appcast.xml unchanged, nothing to push"
+          else
+            git commit -m "chore: update appcast.xml for ${{ steps.version.outputs.tag }}"
+            git push https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git main
+          fi
+
+      - name: Release summary
+        if: always()
+        run: |
+          {
+            echo "## Release ${{ steps.version.outputs.tag }}"
+            echo "- Build: ${build:-unknown}"
+            echo "- DMG size: $([ -f build/ScreenLock.dmg ] && stat -f%z build/ScreenLock.dmg || echo 'n/a') bytes"
+            echo "- Sparkle signature: ${{ steps.sign.outputs.signature && 'signed' || 'missing' }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Cleanup keychain
+        if: always()
+        run: |
+          if [ -n "$KEYCHAIN_PATH" ] && [ -f "$KEYCHAIN_PATH" ]; then
+            security delete-keychain "$KEYCHAIN_PATH" || true
+          fi

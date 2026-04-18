@@ -7,25 +7,24 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		DD1122334455667788990001 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = DD1122334455667788990011 /* Sparkle */; };
-		EE1122334455667788990001 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = EE1122334455667788990010 /* Localizable.strings */; };
-		EE1122334455667788990002 /* L10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE1122334455667788990020 /* L10n.swift */; };
-		1A2B3C4D5E6F7A8B9C0D1E2F /* DynamicBackgroundView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F7A8B9C0D1E20 /* DynamicBackgroundView.swift */; };
-		AA1122334455667788990022 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA1122334455667788990011 /* Assets.xcassets */; };
-		CC1122334455667788990011 /* LockEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC1122334455667788990001 /* LockEvent.swift */; };
-		CC1122334455667788990022 /* StatsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC1122334455667788990002 /* StatsManager.swift */; };
-		CC1122334455667788990033 /* StatsWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC1122334455667788990003 /* StatsWindow.swift */; };
 		29EF30BA86C58F3AE0243529 /* LockScreenWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A24F9A95645E65F602029C92 /* LockScreenWindow.swift */; };
 		2E0FB9A08B403A60D865E523 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 224620A3ACCC748750DE9BD2 /* AppDelegate.swift */; };
+		6034A3D81A91CCF34F0A20A5 /* L10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3340D1C808464E534C711D56 /* L10n.swift */; };
 		6BEE89BB81EDA8BCCEC242CD /* SettingsDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB7F16F0452494FC3C7FF95B /* SettingsDecodingTests.swift */; };
-		BB112233445566778899AABB /* ScheduleLogicTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB112233445566778899AA00 /* ScheduleLogicTests.swift */; };
 		6E73528D17C376692C3665B0 /* PowerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E164D348AF6352C229EA94E /* PowerManager.swift */; };
+		7023D873E198563A22476563 /* DynamicBackgroundView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 525A720E8255B7385BE5E8E7 /* DynamicBackgroundView.swift */; };
+		79ABD6DB1CFF71FD8B0BDA5B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1F45485727769AB0BD1F5EE8 /* Assets.xcassets */; };
 		82602EA760C962BE40B0EFFF /* SettingsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E8503FDBB31062C90E8EB4A /* SettingsManager.swift */; };
+		A4736C8C957449633FEB730E /* StatsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78EDA6E7FECC8016B42D4D3B /* StatsManager.swift */; };
 		B8FE6D5BA0E64FC2F79439DA /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34C11DD2F6830F70D5F559F7 /* main.swift */; };
+		BBB75E6AC2AA31D6FE5B4EFE /* StatsWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2097AB96028FD0E3FA332712 /* StatsWindow.swift */; };
+		BCDB19EB89823C82FDD44655 /* ScheduleLogicTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9917DB5B67B56B45341266D3 /* ScheduleLogicTests.swift */; };
 		BD5B85CEF3C849FD6CB82EEB /* ScreenManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F9BCA41C8E95F09794E8341 /* ScreenManager.swift */; };
 		CF6C0C878B9CC19471C1F5A8 /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EA0B563CF8DA04589CE44D3 /* Settings.swift */; };
 		DE6B19646B915BE7E53C40C0 /* ScheduleManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99415A6CCAEA954E67626DDC /* ScheduleManager.swift */; };
+		EF79C72401E32E36682C511A /* LockEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE40EF0A26DCC035D0269DE0 /* LockEvent.swift */; };
 		F20D9B93DBE2737DEE4FC528 /* MenuBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D731EE8B787E42BC4C00A49 /* MenuBarController.swift */; };
+		F25099234A1B131A14E1540D /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = BFF2F0697565EF1F0CE7281E /* Localizable.strings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -39,28 +38,29 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		02476C0E072F5C2F2FC7F28C /* ScreenLock.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ScreenLock.entitlements; sourceTree = "<group>"; };
+		05EF324173D20C4BFF15787A /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		068B22529AC910458AC5D566 /* ScreenLockTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ScreenLockTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		1A2B3C4D5E6F7A8B9C0D1E20 /* DynamicBackgroundView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DynamicBackgroundView.swift; sourceTree = "<group>"; };
+		1F45485727769AB0BD1F5EE8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		2097AB96028FD0E3FA332712 /* StatsWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsWindow.swift; sourceTree = "<group>"; };
 		224620A3ACCC748750DE9BD2 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		2D51C9D14B307DDD508857AC /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		2E164D348AF6352C229EA94E /* PowerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerManager.swift; sourceTree = "<group>"; };
+		3340D1C808464E534C711D56 /* L10n.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = L10n.swift; sourceTree = "<group>"; };
 		34C11DD2F6830F70D5F559F7 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		525A720E8255B7385BE5E8E7 /* DynamicBackgroundView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DynamicBackgroundView.swift; sourceTree = "<group>"; };
 		5D731EE8B787E42BC4C00A49 /* MenuBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarController.swift; sourceTree = "<group>"; };
 		5EA0B563CF8DA04589CE44D3 /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
 		6F9BCA41C8E95F09794E8341 /* ScreenManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenManager.swift; sourceTree = "<group>"; };
+		78EDA6E7FECC8016B42D4D3B /* StatsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsManager.swift; sourceTree = "<group>"; };
 		8E8503FDBB31062C90E8EB4A /* SettingsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsManager.swift; sourceTree = "<group>"; };
+		9917DB5B67B56B45341266D3 /* ScheduleLogicTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleLogicTests.swift; sourceTree = "<group>"; };
 		99415A6CCAEA954E67626DDC /* ScheduleManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleManager.swift; sourceTree = "<group>"; };
 		A24F9A95645E65F602029C92 /* LockScreenWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockScreenWindow.swift; sourceTree = "<group>"; };
 		D369C1853BA1B6421CBABAEE /* ScreenLock.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ScreenLock.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		BB112233445566778899AA00 /* ScheduleLogicTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleLogicTests.swift; sourceTree = "<group>"; };
+		DE40EF0A26DCC035D0269DE0 /* LockEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockEvent.swift; sourceTree = "<group>"; };
 		EB7F16F0452494FC3C7FF95B /* SettingsDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsDecodingTests.swift; sourceTree = "<group>"; };
 		F4D719924486EE43172436FF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		AA1122334455667788990011 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		CC1122334455667788990001 /* LockEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockEvent.swift; sourceTree = "<group>"; };
-		CC1122334455667788990002 /* StatsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsManager.swift; sourceTree = "<group>"; };
-		CC1122334455667788990003 /* StatsWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsWindow.swift; sourceTree = "<group>"; };
-		EE1122334455667788990011 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
-		EE1122334455667788990012 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = "en.lproj/Localizable.strings"; sourceTree = "<group>"; };
-		EE1122334455667788990020 /* L10n.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = L10n.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -68,11 +68,12 @@
 			isa = PBXGroup;
 			children = (
 				224620A3ACCC748750DE9BD2 /* AppDelegate.swift */,
-				AA1122334455667788990011 /* Assets.xcassets */,
+				1F45485727769AB0BD1F5EE8 /* Assets.xcassets */,
 				F4D719924486EE43172436FF /* Info.plist */,
-				EE1122334455667788990020 /* L10n.swift */,
-				EE1122334455667788990010 /* Localizable.strings */,
+				3340D1C808464E534C711D56 /* L10n.swift */,
+				BFF2F0697565EF1F0CE7281E /* Localizable.strings */,
 				34C11DD2F6830F70D5F559F7 /* main.swift */,
+				02476C0E072F5C2F2FC7F28C /* ScreenLock.entitlements */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -80,7 +81,7 @@
 		45656C071B6EE30C56423AD5 /* ScreenLockTests */ = {
 			isa = PBXGroup;
 			children = (
-				BB112233445566778899AA00 /* ScheduleLogicTests.swift */,
+				9917DB5B67B56B45341266D3 /* ScheduleLogicTests.swift */,
 				EB7F16F0452494FC3C7FF95B /* SettingsDecodingTests.swift */,
 			);
 			name = ScreenLockTests;
@@ -119,7 +120,7 @@
 		83BBA3B1DE11D153D024A5BC /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				CC1122334455667788990001 /* LockEvent.swift */,
+				DE40EF0A26DCC035D0269DE0 /* LockEvent.swift */,
 				5EA0B563CF8DA04589CE44D3 /* Settings.swift */,
 			);
 			path = Models;
@@ -132,7 +133,7 @@
 				99415A6CCAEA954E67626DDC /* ScheduleManager.swift */,
 				6F9BCA41C8E95F09794E8341 /* ScreenManager.swift */,
 				8E8503FDBB31062C90E8EB4A /* SettingsManager.swift */,
-				CC1122334455667788990002 /* StatsManager.swift */,
+				78EDA6E7FECC8016B42D4D3B /* StatsManager.swift */,
 			);
 			path = Managers;
 			sourceTree = "<group>";
@@ -140,27 +141,15 @@
 		EB42B68980191B023BC07E40 /* Controllers */ = {
 			isa = PBXGroup;
 			children = (
-				1A2B3C4D5E6F7A8B9C0D1E20 /* DynamicBackgroundView.swift */,
+				525A720E8255B7385BE5E8E7 /* DynamicBackgroundView.swift */,
 				A24F9A95645E65F602029C92 /* LockScreenWindow.swift */,
 				5D731EE8B787E42BC4C00A49 /* MenuBarController.swift */,
-				CC1122334455667788990003 /* StatsWindow.swift */,
+				2097AB96028FD0E3FA332712 /* StatsWindow.swift */,
 			);
 			path = Controllers;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
-
-/* Begin PBXVariantGroup section */
-		EE1122334455667788990010 /* Localizable.strings */ = {
-			isa = PBXVariantGroup;
-			children = (
-				EE1122334455667788990011 /* zh-Hans */,
-				EE1122334455667788990012 /* en */,
-			);
-			name = Localizable.strings;
-			sourceTree = "<group>";
-		};
-/* End PBXVariantGroup section */
 
 /* Begin PBXNativeTarget section */
 		6CFF01E3EF73907FBB64C1EE /* ScreenLock */ = {
@@ -168,17 +157,13 @@
 			buildConfigurationList = 549F8711910DCBE0D3D346AA /* Build configuration list for PBXNativeTarget "ScreenLock" */;
 			buildPhases = (
 				A888440C3CC0EE16C01E6BA4 /* Sources */,
-				DD1122334455667788990099 /* Frameworks */,
-				AA1122334455667788990033 /* Resources */,
+				050C295264786CB29B77E4BA /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			name = ScreenLock;
-			packageProductDependencies = (
-				DD1122334455667788990011 /* Sparkle */,
-			);
 			productName = ScreenLock;
 			productReference = D369C1853BA1B6421CBABAEE /* ScreenLock.app */;
 			productType = "com.apple.product-type.application";
@@ -216,13 +201,10 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				Base,
-				"zh-Hans",
 				en,
+				"zh-Hans",
 			);
 			mainGroup = 4E5E3AB61840FD450ACD38CE;
-			packageReferences = (
-				DD1122334455667788990021 /* XCRemoteSwiftPackageReference "Sparkle" */,
-			);
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -232,24 +214,13 @@
 		};
 /* End PBXProject section */
 
-/* Begin PBXFrameworksBuildPhase section */
-		DD1122334455667788990099 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				DD1122334455667788990001 /* Sparkle in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXFrameworksBuildPhase section */
-
 /* Begin PBXResourcesBuildPhase section */
-		AA1122334455667788990033 /* Resources */ = {
+		050C295264786CB29B77E4BA /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AA1122334455667788990022 /* Assets.xcassets in Resources */,
-				EE1122334455667788990001 /* Localizable.strings in Resources */,
+				79ABD6DB1CFF71FD8B0BDA5B /* Assets.xcassets in Resources */,
+				F25099234A1B131A14E1540D /* Localizable.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -261,7 +232,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				2E0FB9A08B403A60D865E523 /* AppDelegate.swift in Sources */,
-				1A2B3C4D5E6F7A8B9C0D1E2F /* DynamicBackgroundView.swift in Sources */,
+				7023D873E198563A22476563 /* DynamicBackgroundView.swift in Sources */,
+				6034A3D81A91CCF34F0A20A5 /* L10n.swift in Sources */,
+				EF79C72401E32E36682C511A /* LockEvent.swift in Sources */,
 				29EF30BA86C58F3AE0243529 /* LockScreenWindow.swift in Sources */,
 				F20D9B93DBE2737DEE4FC528 /* MenuBarController.swift in Sources */,
 				6E73528D17C376692C3665B0 /* PowerManager.swift in Sources */,
@@ -269,10 +242,8 @@
 				BD5B85CEF3C849FD6CB82EEB /* ScreenManager.swift in Sources */,
 				CF6C0C878B9CC19471C1F5A8 /* Settings.swift in Sources */,
 				82602EA760C962BE40B0EFFF /* SettingsManager.swift in Sources */,
-				CC1122334455667788990011 /* LockEvent.swift in Sources */,
-				CC1122334455667788990022 /* StatsManager.swift in Sources */,
-				CC1122334455667788990033 /* StatsWindow.swift in Sources */,
-				EE1122334455667788990002 /* L10n.swift in Sources */,
+				A4736C8C957449633FEB730E /* StatsManager.swift in Sources */,
+				BBB75E6AC2AA31D6FE5B4EFE /* StatsWindow.swift in Sources */,
 				B8FE6D5BA0E64FC2F79439DA /* main.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -281,7 +252,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BB112233445566778899AABB /* ScheduleLogicTests.swift in Sources */,
+				BCDB19EB89823C82FDD44655 /* ScheduleLogicTests.swift in Sources */,
 				6BEE89BB81EDA8BCCEC242CD /* SettingsDecodingTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -296,6 +267,18 @@
 		};
 /* End PBXTargetDependency section */
 
+/* Begin PBXVariantGroup section */
+		BFF2F0697565EF1F0CE7281E /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				2D51C9D14B307DDD508857AC /* en */,
+				05EF324173D20C4BFF15787A /* zh-Hans */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
 /* Begin XCBuildConfiguration section */
 		2C5B0DC6E174C259CFFFEB23 /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -308,7 +291,7 @@
 					"@executable_path/../Frameworks",
 					"@loader_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				PRODUCT_BUNDLE_IDENTIFIER = com.yugangcao.screenlock.tests;
 				SDKROOT = macosx;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ScreenLock.app/Contents/MacOS/ScreenLock";
@@ -319,15 +302,15 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = "";
+				CODE_SIGN_ENTITLEMENTS = ScreenLock/App/ScreenLock.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = ScreenLock/App/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				PRODUCT_BUNDLE_IDENTIFIER = com.yugangcao.screenlock;
 				SDKROOT = macosx;
 			};
@@ -344,7 +327,7 @@
 					"@executable_path/../Frameworks",
 					"@loader_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				PRODUCT_BUNDLE_IDENTIFIER = com.yugangcao.screenlock.tests;
 				SDKROOT = macosx;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ScreenLock.app/Contents/MacOS/ScreenLock";
@@ -396,7 +379,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -458,7 +441,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -474,15 +457,15 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = "";
+				CODE_SIGN_ENTITLEMENTS = ScreenLock/App/ScreenLock.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = ScreenLock/App/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				PRODUCT_BUNDLE_IDENTIFIER = com.yugangcao.screenlock;
 				SDKROOT = macosx;
 			};
@@ -519,25 +502,6 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
-
-/* Begin XCRemoteSwiftPackageReference section */
-		DD1122334455667788990021 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/sparkle-project/Sparkle";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 2.0.0;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		DD1122334455667788990011 /* Sparkle */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = DD1122334455667788990021 /* XCRemoteSwiftPackageReference "Sparkle" */;
-			productName = Sparkle;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A1CCD5D8365CE02478FD8C2B /* Project object */;
 }

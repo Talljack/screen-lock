@@ -14,12 +14,14 @@ targets:
       properties:
         LSUIElement: true
         NSAppleEventsUsageDescription: "ScreenLock needs permission to lock your screen at scheduled times."
+        SUFeedURL: "https://raw.githubusercontent.com/Talljack/screen-lock/main/appcast.xml"
+        SUPublicEDKey: "t5BuJRYkalejaR25jPfscdJxwTOjZlETDCrpwpcTl80="
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.yugangcao.screenlock
       INFOPLIST_FILE: ScreenLock/App/Info.plist
       MACOSX_DEPLOYMENT_TARGET: "10.15"
-      ENABLE_HARDENED_RUNTIME: NO
-      CODE_SIGN_ENTITLEMENTS: ""
+      ENABLE_HARDENED_RUNTIME: YES
+      CODE_SIGN_ENTITLEMENTS: ScreenLock/App/ScreenLock.entitlements
   ScreenLockTests:
     type: bundle.unit-test
     platform: macOS
