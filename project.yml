@@ -3,12 +3,18 @@ options:
   bundleIdPrefix: com.yugangcao
   deploymentTarget:
     macOS: "10.15"
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: 2.9.0
 targets:
   ScreenLock:
     type: application
     platform: macOS
     sources:
       - ScreenLock
+    dependencies:
+      - package: Sparkle
     info:
       path: ScreenLock/App/Info.plist
       properties:

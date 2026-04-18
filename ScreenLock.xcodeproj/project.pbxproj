@@ -16,6 +16,7 @@
 		79ABD6DB1CFF71FD8B0BDA5B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1F45485727769AB0BD1F5EE8 /* Assets.xcassets */; };
 		82602EA760C962BE40B0EFFF /* SettingsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E8503FDBB31062C90E8EB4A /* SettingsManager.swift */; };
 		A4736C8C957449633FEB730E /* StatsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78EDA6E7FECC8016B42D4D3B /* StatsManager.swift */; };
+		A64A98CC32DFB54DC728A4F7 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A96EEC0BCFC382B24A973AB2 /* Sparkle */; };
 		B8FE6D5BA0E64FC2F79439DA /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34C11DD2F6830F70D5F559F7 /* main.swift */; };
 		BBB75E6AC2AA31D6FE5B4EFE /* StatsWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2097AB96028FD0E3FA332712 /* StatsWindow.swift */; };
 		BCDB19EB89823C82FDD44655 /* ScheduleLogicTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9917DB5B67B56B45341266D3 /* ScheduleLogicTests.swift */; };
@@ -62,6 +63,17 @@
 		EB7F16F0452494FC3C7FF95B /* SettingsDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsDecodingTests.swift; sourceTree = "<group>"; };
 		F4D719924486EE43172436FF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		66C176E4817E7834B52288BC /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A64A98CC32DFB54DC728A4F7 /* Sparkle in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		34A9F589CC04828B4611F0C2 /* App */ = {
@@ -158,12 +170,16 @@
 			buildPhases = (
 				A888440C3CC0EE16C01E6BA4 /* Sources */,
 				050C295264786CB29B77E4BA /* Resources */,
+				66C176E4817E7834B52288BC /* Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			name = ScreenLock;
+			packageProductDependencies = (
+				A96EEC0BCFC382B24A973AB2 /* Sparkle */,
+			);
 			productName = ScreenLock;
 			productReference = D369C1853BA1B6421CBABAEE /* ScreenLock.app */;
 			productType = "com.apple.product-type.application";
@@ -205,6 +221,9 @@
 				"zh-Hans",
 			);
 			mainGroup = 4E5E3AB61840FD450ACD38CE;
+			packageReferences = (
+				F4EFB9751E40879959BFE2E8 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -502,6 +521,25 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		F4EFB9751E40879959BFE2E8 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.9.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A96EEC0BCFC382B24A973AB2 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F4EFB9751E40879959BFE2E8 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A1CCD5D8365CE02478FD8C2B /* Project object */;
 }
