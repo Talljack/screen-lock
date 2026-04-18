@@ -2,7 +2,7 @@ name: ScreenLock
 options:
   bundleIdPrefix: com.yugangcao
   deploymentTarget:
-    macOS: "10.15"
+    macOS: "11.0"
 packages:
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle
@@ -25,7 +25,7 @@ targets:
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.yugangcao.screenlock
       INFOPLIST_FILE: ScreenLock/App/Info.plist
-      MACOSX_DEPLOYMENT_TARGET: "10.15"
+      MACOSX_DEPLOYMENT_TARGET: "11.0"
       ENABLE_HARDENED_RUNTIME: YES
       CODE_SIGN_ENTITLEMENTS: ScreenLock/App/ScreenLock.entitlements
   ScreenLockTests:
@@ -38,4 +38,4 @@ targets:
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.yugangcao.screenlock.tests
       GENERATE_INFOPLIST_FILE: YES
-      MACOSX_DEPLOYMENT_TARGET: "10.15"
+      MACOSX_DEPLOYMENT_TARGET: "11.0"
