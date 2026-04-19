@@ -302,7 +302,7 @@ jobs:
                       <pubDate>${DATE}</pubDate>
                       <sparkle:version>${BUILD}</sparkle:version>
                       <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
-                      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+                      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
                       <enclosure url="${URL}"
                                  type="application/x-apple-diskimage"
                                  sparkle:edSignature="${SIG}"
