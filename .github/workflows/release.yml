@@ -119,8 +119,35 @@ jobs:
         run: |
           mkdir -p build/export
           cp -R build/ScreenLock.xcarchive/Products/Applications/ScreenLock.app build/export/
-          codesign --verify --deep --strict --verbose=2 build/export/ScreenLock.app
-          codesign -dv --entitlements :- build/export/ScreenLock.app 2>&1 | head -30
+
+          APP="build/export/ScreenLock.app"
+          SPARKLE="$APP/Contents/Frameworks/Sparkle.framework"
+          IDENTITY="Developer ID Application"
+
+          # Re-sign Sparkle's nested helpers bottom-up. Xcode's archive step
+          # doesn't cover these, and notarization rejects unsigned nested binaries.
+          if [ -d "$SPARKLE" ]; then
+            for BIN in \
+              "$SPARKLE/Versions/B/XPCServices/Downloader.xpc" \
+              "$SPARKLE/Versions/B/XPCServices/Installer.xpc" \
+              "$SPARKLE/Versions/B/Autoupdate" \
+              "$SPARKLE/Versions/B/Updater.app"; do
+              if [ -e "$BIN" ]; then
+                echo "signing $BIN"
+                codesign --force --sign "$IDENTITY" --timestamp --options=runtime "$BIN"
+              fi
+            done
+            codesign --force --sign "$IDENTITY" --timestamp --options=runtime "$SPARKLE"
+          fi
+
+          # Re-sign the app itself with its entitlements after nested fixups.
+          codesign --force --sign "$IDENTITY" \
+            --timestamp --options=runtime \
+            --entitlements ScreenLock/App/ScreenLock.entitlements \
+            "$APP"
+
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          codesign -dv --entitlements :- "$APP" 2>&1 | head -30
 
       - name: Notarize and staple .app
         env:
@@ -133,20 +160,23 @@ jobs:
           ditto -c -k --keepParent build/export/ScreenLock.app "$ZIP"
 
           SUBMIT_LOG="$RUNNER_TEMP/notarize-app.log"
-          if ! xcrun notarytool submit "$ZIP" \
-               --apple-id "$APPLE_ID" \
-               --password "$APPLE_PASSWORD" \
-               --team-id "$APPLE_TEAM_ID" \
-               --wait --timeout 30m 2>&1 | tee "$SUBMIT_LOG"; then
-            SUBMIT_ID=$(grep -oE 'id: [a-f0-9-]+' "$SUBMIT_LOG" | head -1 | awk '{print $2}')
-            if [ -n "$SUBMIT_ID" ]; then
-              echo "::group::Notarization log for $SUBMIT_ID"
-              xcrun notarytool log "$SUBMIT_ID" \
-                --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID" || true
-              echo "::endgroup::"
-            fi
+          xcrun notarytool submit "$ZIP" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait --timeout 30m 2>&1 | tee "$SUBMIT_LOG"
+
+          STATUS=$(grep -E '^  status: ' "$SUBMIT_LOG" | tail -1 | awk '{print $2}')
+          SUBMIT_ID=$(grep -oE 'id: [a-f0-9-]+' "$SUBMIT_LOG" | head -1 | awk '{print $2}')
+          if [ "$STATUS" != "Accepted" ]; then
+            echo "::group::Notarization log for $SUBMIT_ID"
+            xcrun notarytool log "$SUBMIT_ID" \
+              --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID" || true
+            echo "::endgroup::"
+            echo "::error::Notarization status was '$STATUS' (expected Accepted)"
             exit 1
           fi
+
           xcrun stapler staple build/export/ScreenLock.app
           xcrun stapler validate build/export/ScreenLock.app
           rm -f "$ZIP"
@@ -175,20 +205,23 @@ jobs:
         run: |
           set -o pipefail
           SUBMIT_LOG="$RUNNER_TEMP/notarize.log"
-          if ! xcrun notarytool submit build/ScreenLock.dmg \
-               --apple-id "$APPLE_ID" \
-               --password "$APPLE_PASSWORD" \
-               --team-id "$APPLE_TEAM_ID" \
-               --wait --timeout 30m 2>&1 | tee "$SUBMIT_LOG"; then
-            SUBMIT_ID=$(grep -oE 'id: [a-f0-9-]+' "$SUBMIT_LOG" | head -1 | awk '{print $2}')
-            if [ -n "$SUBMIT_ID" ]; then
-              echo "::group::Notarization log for $SUBMIT_ID"
-              xcrun notarytool log "$SUBMIT_ID" \
-                --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID" || true
-              echo "::endgroup::"
-            fi
+          xcrun notarytool submit build/ScreenLock.dmg \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait --timeout 30m 2>&1 | tee "$SUBMIT_LOG"
+
+          STATUS=$(grep -E '^  status: ' "$SUBMIT_LOG" | tail -1 | awk '{print $2}')
+          SUBMIT_ID=$(grep -oE 'id: [a-f0-9-]+' "$SUBMIT_LOG" | head -1 | awk '{print $2}')
+          if [ "$STATUS" != "Accepted" ]; then
+            echo "::group::Notarization log for $SUBMIT_ID"
+            xcrun notarytool log "$SUBMIT_ID" \
+              --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID" || true
+            echo "::endgroup::"
+            echo "::error::DMG notarization status was '$STATUS' (expected Accepted)"
             exit 1
           fi
+
           xcrun stapler staple build/ScreenLock.dmg
           xcrun stapler validate build/ScreenLock.dmg
 
