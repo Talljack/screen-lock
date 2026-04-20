@@ -153,6 +153,13 @@ class ScheduleManager {
     }
 
     private func transitionToLocked() {
+        // Skip lock if displays are already asleep
+        if ScreenManager.shared.areDisplaysAsleep() {
+            os_log("Displays already asleep, skipping lock", log: log, type: .info)
+            transitionToNormal()
+            return
+        }
+
         state = .locked
         os_log("State -> Locked", log: log, type: .info)
         ScreenManager.shared.lockScreenAndTurnOffDisplay { [weak self] in
