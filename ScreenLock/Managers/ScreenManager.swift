@@ -1,5 +1,6 @@
 import Cocoa
 import CoreGraphics
+import IOKit.pwr_mgt
 import os.log
 
 private let log = OSLog(subsystem: "com.yugangcao.screenlock", category: "Screen")
@@ -131,6 +132,16 @@ class ScreenManager {
                 original.blue.min, blueMax, original.blue.gamma
             )
         }
+    }
+
+    /// Check if displays are asleep (lid closed or display off)
+    func areDisplaysAsleep() -> Bool {
+        for display in activeDisplayIDs() {
+            if CGDisplayIsAsleep(display) == 0 {
+                return false
+            }
+        }
+        return true
     }
 
     func lockScreenAndTurnOffDisplay(completion: (() -> Void)? = nil) {

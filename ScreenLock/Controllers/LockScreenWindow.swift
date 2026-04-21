@@ -124,6 +124,7 @@ class LockScreenWindow: NSWindow {
     private var countdownLabel: NSTextField?
     private var cardView: NSVisualEffectView?
     private var allowClose = false
+    private var keepOnTopTimer: Timer?
 
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
@@ -165,15 +166,31 @@ class LockScreenWindow: NSWindow {
             card.add(spring, forKey: "cardEntrance")
             card.transform = CATransform3DIdentity
         }
+
+        // Keep window on top during gestures
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.didResignKeyNotification,
+            object: self,
+            queue: .main
+        ) { [weak self] _ in
+            self?.orderFrontRegardless()
+            self?.makeKeyAndOrderFront(nil)
+        }
+
+        // Continuously ensure window stays on top (handles touchscreen gestures)
+        keepOnTopTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            guard let self = self, !self.allowClose else { return }
+            self.orderFrontRegardless()
+        }
     }
 
     private func setupWindow() {
-        // NSWindow.Level 值越高越在前面。screenSaver = 1000，
-        // 但某些全屏 app 可能挡住它。用更高的 level 确保覆盖一切。
-        level = NSWindow.Level(rawValue: Int(CGShieldingWindowLevel()) + 1)
-        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
-        isOpaque = false
-        backgroundColor = .clear
+        // Use maximum window level to ensure lock screen stays on top
+        // CGShieldingWindowLevel() is the highest system level
+        level = NSWindow.Level(rawValue: Int(CGShieldingWindowLevel()))
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .transient]
+        isOpaque = true
+        backgroundColor = .black
         ignoresMouseEvents = false
         isMovable = false
         canHide = false
@@ -182,6 +199,9 @@ class LockScreenWindow: NSWindow {
         standardWindowButton(.closeButton)?.isHidden = true
         standardWindowButton(.miniaturizeButton)?.isHidden = true
         standardWindowButton(.zoomButton)?.isHidden = true
+
+        // Prevent window from being hidden by gestures
+        hidesOnDeactivate = false
     }
 
     private func setupUI(remainingSeconds: Int) {
@@ -293,10 +313,14 @@ class LockScreenWindow: NSWindow {
 
     func allowDismiss() {
         allowClose = true
+        keepOnTopTimer?.invalidate()
+        keepOnTopTimer = nil
     }
 
     func dismissForSystemLock() {
         allowClose = true
+        keepOnTopTimer?.invalidate()
+        keepOnTopTimer = nil
         orderOut(nil)
     }
 
@@ -305,6 +329,8 @@ class LockScreenWindow: NSWindow {
             NSSound.beep()
             return
         }
+        keepOnTopTimer?.invalidate()
+        keepOnTopTimer = nil
         super.close()
     }
 
