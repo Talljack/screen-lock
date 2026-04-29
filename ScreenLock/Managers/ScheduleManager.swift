@@ -15,6 +15,7 @@ class ScheduleManager {
 
     private var timer: Timer?
     private(set) var state: ScheduleState = .normal
+    var isInWarningState: Bool { state == .warning }
 
     var onStateChange: ((ScheduleState) -> Void)?
 
@@ -43,9 +44,9 @@ class ScheduleManager {
 
         if !settings.lockEnabled {
             if state != .normal {
-                ScreenManager.shared.cancelDimming()
                 transitionToNormal()
             }
+            ScreenManager.shared.applyCurrentSoftnessSetting()
             return
         }
 
@@ -66,13 +67,23 @@ class ScheduleManager {
                 transitionToLocked()
             }
         } else if now >= warningStart && now < todayLock {
+            let totalWarningInterval = max(Double(settings.warningMinutes) * 60, 1)
+            let warningProgress = Float(now.timeIntervalSince(warningStart) / totalWarningInterval)
+
             if state != .warning {
                 transitionToWarning(durationMinutes: settings.warningMinutes)
             }
+            ScreenManager.shared.refreshWarningDimming(
+                progress: warningProgress,
+                durationMinutes: settings.warningMinutes,
+                softnessLevel: settings.warningSoftnessLevel
+            )
         } else {
             if state != .normal {
                 ScreenManager.shared.cancelDimming()
                 transitionToNormal()
+            } else {
+                ScreenManager.shared.clearManualSoftnessPreviewIfNeeded()
             }
         }
     }
@@ -129,7 +140,6 @@ class ScheduleManager {
         state = .warning
         os_log("State -> Warning", log: log, type: .info)
         NSSound(named: "Tink")?.play()
-        ScreenManager.shared.startGradualDimming(durationMinutes: durationMinutes)
         sendWarningNotification(minutesLeft: durationMinutes)
         onStateChange?(.warning)
     }

@@ -36,8 +36,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         SettingsManager.shared.applyStoredLanguage()
+        SunCycleManager.shared.requestLocationIfNeeded()
 
         ScheduleManager.shared.start()
+        ScreenManager.shared.applyCurrentSoftnessSetting()
         menuBarController = MenuBarController(updater: updaterController.updater)
 
         StatsManager.shared.onNewAchievement = { achievement in

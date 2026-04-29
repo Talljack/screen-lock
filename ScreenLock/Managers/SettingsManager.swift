@@ -52,6 +52,16 @@ class SettingsManager {
         save()
     }
 
+    func updateWarningSoftnessLevel(_ level: WarningSoftnessLevel) {
+        settings.warningSoftnessLevel = level
+        save()
+    }
+
+    func updateSmartSoftnessBias(_ bias: Double) {
+        settings.smartSoftnessBias = bias
+        save()
+    }
+
     func togglePreventSleep() {
         settings.preventSleepEnabled.toggle()
         save()

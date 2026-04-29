@@ -180,21 +180,40 @@ class LockScreenWindow: NSWindow {
         // Continuously ensure window stays on top (handles touchscreen gestures)
         keepOnTopTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             guard let self = self, !self.allowClose else { return }
-            self.orderFrontRegardless()
+            self.reinforceFrontmost()
         }
+    }
+
+    func showImmediately() {
+        alphaValue = 1
+        reinforceFrontmost()
+    }
+
+    func reinforceFrontmost() {
+        orderFrontRegardless()
+        orderFront(nil)
+        makeKeyAndOrderFront(nil)
     }
 
     private func setupWindow() {
         // Use maximum window level to ensure lock screen stays on top
         // CGShieldingWindowLevel() is the highest system level
         level = NSWindow.Level(rawValue: Int(CGShieldingWindowLevel()))
-        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .transient]
+        collectionBehavior = [
+            .canJoinAllSpaces,
+            .fullScreenAuxiliary,
+            .moveToActiveSpace,
+            .stationary,
+            .transient,
+            .ignoresCycle
+        ]
         isOpaque = true
         backgroundColor = .black
         ignoresMouseEvents = false
         isMovable = false
         canHide = false
         hasShadow = false
+        animationBehavior = .none
 
         standardWindowButton(.closeButton)?.isHidden = true
         standardWindowButton(.miniaturizeButton)?.isHidden = true
