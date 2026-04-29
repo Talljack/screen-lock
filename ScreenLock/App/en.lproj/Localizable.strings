@@ -8,6 +8,7 @@
 "menu.lock_now" = "Lock Now (⌥⌘L)";
 "menu.lock_time" = "Lock Time";
 "menu.warning" = "Early Warning";
+"menu.softness" = "Screen Softness";
 "menu.break_duration" = "Break Duration";
 "menu.appearance" = "Appearance";
 "menu.prevent_sleep" = "Prevent Sleep on Lid Close";
@@ -22,6 +23,11 @@
 /* Menu - Current Values */
 "menu.lock_time.value" = "Lock Time: %@";
 "menu.warning.value" = "Warning: %d min";
+"menu.softness.value" = "Screen Softness: %@";
+"menu.softness.smart_value" = "Screen Softness: %@ · %@";
+"menu.softness.preference" = "Smart Preference";
+"menu.softness.preference.value" = "Smart Preference: %d%%";
+"menu.softness.preference.summary" = "%d%%";
 "menu.break.value" = "Break: %d min";
 "menu.appearance.value" = "Appearance: %@";
 "menu.custom_time" = "Custom Time...";
@@ -41,6 +47,18 @@
 "appearance.edit_copy" = "Edit Lock Screen Text...";
 "appearance.reset_copy" = "Reset to Default Text";
 "appearance.preview" = "Preview Lock Screen...";
+"softness.off" = "Off";
+"softness.smart" = "Smart (Default)";
+"softness.subtle" = "Subtle";
+"softness.gentle" = "Gentle";
+"softness.balanced" = "Balanced";
+"softness.warm" = "Warm";
+"softness.extra_warm" = "Extra Warm";
+"softness.preference.conservative" = "Conservative";
+"softness.preference.balanced" = "Balanced";
+"softness.preference.warm" = "Warmer";
+"softness.preference.cooler" = "Cooler";
+"softness.preference.warmer" = "Warmer";
 
 /* Themes */
 "theme.peachBunny" = "Peach Bunny";
@@ -123,6 +141,8 @@
 "permission.message" = "ScreenLock needs Accessibility permission to control screen brightness and lock.\n\nGo to: System Settings → Privacy & Security → Accessibility,\nfind ScreenLock and enable it.\n\nThe app will work normally once permission is granted.";
 "permission.open_settings" = "Open System Settings";
 "permission.later" = "Later";
+"permission.location.title" = "Allow location for sunrise/sunset adjustment";
+"permission.location.message" = "ScreenLock can use your location to adjust screen softness around local sunrise and sunset. If you deny access, it will fall back to local time estimation.";
 
 /* Achievement */
 "achievement.unlocked" = "%@ Achievement Unlocked!";

@@ -24,6 +24,11 @@ class MenuBarController {
     private var customLockTimeItem: NSMenuItem?
     private var warningParentItem: NSMenuItem?
     private var warningMenuItems: [NSMenuItem] = []
+    private var softnessParentItem: NSMenuItem?
+    private var softnessMenuItems: [NSMenuItem] = []
+    private var smartPreferenceValueItem: NSMenuItem?
+    private var smartPreferenceSliderItem: NSMenuItem?
+    private var smartPreferenceSlider: NSSlider?
     private var breakParentItem: NSMenuItem?
     private var breakDurationMenuItems: [NSMenuItem] = []
     private var customBreakDurationItem: NSMenuItem?
@@ -74,6 +79,8 @@ class MenuBarController {
     }
 
     private func setupMenuItems() {
+        resetMenuItemReferences()
+
         // -- Info section --
         countdownMenuItem = NSMenuItem()
         countdownMenuItem?.attributedTitle = createCountdownAttributedString(L("menu.loading"))
@@ -119,6 +126,11 @@ class MenuBarController {
         menu?.addItem(breakParentItem!)
 
         menu?.addItem(.separator())
+
+        // Keep screen softness configurable even when scheduled locking is off.
+        softnessParentItem = NSMenuItem(title: L("menu.softness"), action: nil, keyEquivalent: "")
+        softnessParentItem?.submenu = buildSoftnessSubmenu()
+        menu?.addItem(softnessParentItem!)
 
         // -- Appearance submenu --
         appearanceParentItem = NSMenuItem(title: L("menu.appearance"), action: nil, keyEquivalent: "")
@@ -235,6 +247,59 @@ class MenuBarController {
         return sub
     }
 
+    private func buildSoftnessSubmenu() -> NSMenu {
+        let sub = NSMenu()
+
+        for level in WarningSoftnessLevel.allCases {
+            let item = NSMenuItem(title: level.displayName, action: #selector(softnessLevelSelected(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = level.rawValue
+            softnessMenuItems.append(item)
+            sub.addItem(item)
+        }
+
+        sub.addItem(.separator())
+        smartPreferenceValueItem = NSMenuItem(title: L("menu.softness.preference.value", 50), action: nil, keyEquivalent: "")
+        smartPreferenceValueItem?.isEnabled = false
+        if let smartPreferenceValueItem {
+            sub.addItem(smartPreferenceValueItem)
+        }
+
+        smartPreferenceSliderItem = NSMenuItem()
+        smartPreferenceSliderItem?.view = buildSmartPreferenceSliderView()
+        if let smartPreferenceSliderItem {
+            sub.addItem(smartPreferenceSliderItem)
+        }
+
+        return sub
+    }
+
+    private func buildSmartPreferenceSliderView() -> NSView {
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 248, height: 52))
+
+        let leadingLabel = NSTextField(labelWithString: L("softness.preference.cooler"))
+        leadingLabel.font = NSFont.systemFont(ofSize: 11)
+        leadingLabel.textColor = .secondaryLabelColor
+        leadingLabel.frame = NSRect(x: 12, y: 28, width: 60, height: 14)
+        container.addSubview(leadingLabel)
+
+        let trailingLabel = NSTextField(labelWithString: L("softness.preference.warmer"))
+        trailingLabel.font = NSFont.systemFont(ofSize: 11)
+        trailingLabel.textColor = .secondaryLabelColor
+        trailingLabel.alignment = .right
+        trailingLabel.frame = NSRect(x: 176, y: 28, width: 60, height: 14)
+        container.addSubview(trailingLabel)
+
+        let slider = NSSlider(value: 0.5, minValue: 0.0, maxValue: 1.0, target: self, action: #selector(smartPreferenceSliderChanged(_:)))
+        slider.isContinuous = false
+        slider.numberOfTickMarks = 5
+        slider.frame = NSRect(x: 12, y: 8, width: 224, height: 22)
+        container.addSubview(slider)
+        smartPreferenceSlider = slider
+
+        return container
+    }
+
     private func buildLanguageSubmenu() -> NSMenu {
         let sub = NSMenu()
         let currentLang = SettingsManager.shared.settings.language
@@ -263,6 +328,37 @@ class MenuBarController {
         menu?.removeAllItems()
         setupMenuItems()
         updateUI()
+    }
+
+    private func resetMenuItemReferences() {
+        lockTimeMenuItems.removeAll()
+        warningMenuItems.removeAll()
+        softnessMenuItems.removeAll()
+        breakDurationMenuItems.removeAll()
+        themeMenuItems.removeAll()
+
+        countdownMenuItem = nil
+        statusIndicatorItem = nil
+        apiStatusItem = nil
+        lockEnabledItem = nil
+        lockTimeParentItem = nil
+        customLockTimeItem = nil
+        warningParentItem = nil
+        softnessParentItem = nil
+        smartPreferenceValueItem = nil
+        smartPreferenceSliderItem = nil
+        smartPreferenceSlider = nil
+        breakParentItem = nil
+        customBreakDurationItem = nil
+        appearanceParentItem = nil
+        backgroundStatusItem = nil
+        clearBackgroundItem = nil
+        copyPreviewTitleItem = nil
+        copyPreviewSubtitleItem = nil
+        copyPreviewFooterItem = nil
+        preventSleepItem = nil
+        autoStartItem = nil
+        languageParentItem = nil
     }
 
     private func buildAppearanceSubmenu() -> NSMenu {
@@ -361,10 +457,28 @@ class MenuBarController {
         lockTimeParentItem?.isEnabled = enabled
         warningParentItem?.isEnabled = enabled
         breakParentItem?.isEnabled = enabled
+        setMenuItems(lockTimeMenuItems, enabled: enabled)
+        customLockTimeItem?.isEnabled = enabled
+        setMenuItems(warningMenuItems, enabled: enabled)
+        setMenuItems(breakDurationMenuItems, enabled: enabled)
+        customBreakDurationItem?.isEnabled = enabled
+
+        // Screen softness is a standalone preference and must remain editable.
+        softnessParentItem?.isEnabled = true
+        setMenuItems(softnessMenuItems, enabled: true)
+        let smartModeEnabled = settings.warningSoftnessLevel == .smart
+        smartPreferenceSlider?.isEnabled = smartModeEnabled
+        smartPreferenceSliderItem?.isEnabled = smartModeEnabled
+        smartPreferenceValueItem?.isHidden = !smartModeEnabled
+        smartPreferenceSliderItem?.isHidden = !smartModeEnabled
 
         // Parent item titles show current values
         lockTimeParentItem?.title = L("menu.lock_time.value", settings.lockTime)
         warningParentItem?.title = L("menu.warning.value", settings.warningMinutes)
+        let softnessTitle = settings.warningSoftnessLevel == .smart
+            ? L("menu.softness.smart_value", settings.warningSoftnessLevel.displayName, smartPreferenceSummary(for: settings.smartSoftnessBias))
+            : L("menu.softness.value", settings.warningSoftnessLevel.displayName)
+        softnessParentItem?.title = softnessTitle
         breakParentItem?.title = L("menu.break.value", settings.forcedBreakMinutes)
 
         // Lock time submenu checks
@@ -384,6 +498,15 @@ class MenuBarController {
                 item.state = (duration == settings.warningMinutes) ? .on : .off
             }
         }
+
+        for item in softnessMenuItems {
+            if let rawValue = item.representedObject as? String {
+                item.state = (rawValue == settings.warningSoftnessLevel.rawValue) ? .on : .off
+            }
+        }
+
+        smartPreferenceValueItem?.title = L("menu.softness.preference.value", Int((settings.smartSoftnessBias * 100.0).rounded()))
+        smartPreferenceSlider?.doubleValue = settings.smartSoftnessBias
 
         // Break duration submenu checks
         for item in breakDurationMenuItems {
@@ -460,30 +583,18 @@ class MenuBarController {
         }
     }
 
+    private func smartPreferenceSummary(for bias: Double) -> String {
+        L("menu.softness.preference.summary", Int((min(max(bias, 0.0), 1.0) * 100.0).rounded()))
+    }
+
     private func configureButtonForState(_ state: ScheduleState) {
         guard let button = statusItem?.button else { return }
 
-        switch state {
-        case .normal:
-            if let img = NSImage(named: "MenuBarIcon") {
-                img.isTemplate = true
-                button.image = img
-                button.title = ""
-                button.contentTintColor = nil
-            }
-        case .warning, .locked:
-            if #available(macOS 11.0, *) {
-                let symbolName = (state == .warning) ? "sparkles" : "lock.fill"
-                let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
-                if let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil) {
-                    button.image = image.withSymbolConfiguration(config)
-                    button.title = ""
-                    button.contentTintColor = colorForState(state)
-                }
-            } else {
-                button.image = nil
-                button.title = (state == .warning) ? "✨" : "🔒"
-            }
+        if let img = NSImage(named: "MenuBarIcon") {
+            img.isTemplate = true
+            button.image = img
+            button.title = ""
+            button.contentTintColor = nil
         }
     }
 
@@ -502,17 +613,6 @@ class MenuBarController {
             statusText = L("menu.status.locked")
         }
         statusIndicatorItem?.attributedTitle = createStatusAttributedString(statusText)
-    }
-
-    private func colorForState(_ state: ScheduleState) -> NSColor {
-        switch state {
-        case .normal:
-            return NSColor.systemTeal
-        case .warning:
-            return NSColor.systemPink
-        case .locked:
-            return NSColor.systemOrange
-        }
     }
 
     private func makeSectionHeader(_ text: String) -> NSMenuItem {
@@ -564,6 +664,12 @@ class MenuBarController {
     private func performFeedback() {
         if #available(macOS 10.14, *) {
             NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .default)
+        }
+    }
+
+    private func setMenuItems(_ items: [NSMenuItem], enabled: Bool) {
+        for item in items {
+            item.isEnabled = enabled
         }
     }
 
@@ -632,6 +738,24 @@ class MenuBarController {
         SettingsManager.shared.updateForcedBreakMinutes(duration)
         updateUI()
         performFeedback()
+    }
+
+    @objc private func softnessLevelSelected(_ sender: NSMenuItem) {
+        guard
+            let rawValue = sender.representedObject as? String,
+            let level = WarningSoftnessLevel(rawValue: rawValue)
+        else {
+            return
+        }
+
+        SettingsManager.shared.updateWarningSoftnessLevel(level)
+        updateUI()
+        performFeedback()
+    }
+
+    @objc private func smartPreferenceSliderChanged(_ sender: NSSlider) {
+        SettingsManager.shared.updateSmartSoftnessBias(sender.doubleValue)
+        updateUI()
     }
 
     @objc private func customBreakDurationSelected(_ sender: NSMenuItem) {

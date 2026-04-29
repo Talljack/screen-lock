@@ -78,6 +78,7 @@ final class ScheduleLogicTests: XCTestCase {
 
         XCTAssertEqual(settings.autoStartEnabled, false)
         XCTAssertEqual(settings.hasShownPermissionGuide, false)
+        XCTAssertEqual(settings.warningSoftnessLevel, .smart)
         XCTAssertEqual(settings.appearance.isCustomCopy, false)
     }
 
@@ -100,5 +101,12 @@ final class ScheduleLogicTests: XCTestCase {
         XCTAssertEqual(validated.subtitleText, expected.subtitle)
         XCTAssertEqual(validated.footerText, expected.footer)
         XCTAssertNil(validated.backgroundImagePath)
+    }
+
+    func testValidatedSettingsPreserveWarningSoftnessLevel() {
+        var settings = Settings.default
+        settings.warningSoftnessLevel = .warm
+
+        XCTAssertEqual(settings.validated().warningSoftnessLevel, .warm)
     }
 }

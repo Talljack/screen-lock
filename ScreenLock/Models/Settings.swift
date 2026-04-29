@@ -1,5 +1,77 @@
 import Foundation
 
+enum SmartSoftnessPreference: String, Codable, CaseIterable {
+    case conservative
+    case balanced
+    case warm
+
+    var defaultBias: Double {
+        switch self {
+        case .conservative: return 0.2
+        case .balanced: return 0.5
+        case .warm: return 0.8
+        }
+    }
+}
+
+enum WarningSoftnessLevel: String, Codable, CaseIterable {
+    case off
+    case smart
+    case subtle
+    case gentle
+    case balanced
+    case warm
+    case extraWarm
+
+    var displayName: String {
+        switch self {
+        case .off: return L("softness.off")
+        case .smart: return L("softness.smart")
+        case .subtle: return L("softness.subtle")
+        case .gentle: return L("softness.gentle")
+        case .balanced: return L("softness.balanced")
+        case .warm: return L("softness.warm")
+        case .extraWarm: return L("softness.extra_warm")
+        }
+    }
+
+    var brightnessReduction: Double {
+        switch self {
+        case .off: return 0.0
+        case .smart: return WarningSoftnessLevel.balanced.brightnessReduction
+        case .subtle: return 0.05
+        case .gentle: return 0.08
+        case .balanced: return 0.12
+        case .warm: return 0.16
+        case .extraWarm: return 0.20
+        }
+    }
+
+    var warmthStrength: Double {
+        switch self {
+        case .off: return 0.0
+        case .smart: return WarningSoftnessLevel.balanced.warmthStrength
+        case .subtle: return 0.04
+        case .gentle: return 0.07
+        case .balanced: return 0.10
+        case .warm: return 0.13
+        case .extraWarm: return 0.16
+        }
+    }
+
+    var manualStrengthProgress: Float {
+        switch self {
+        case .off: return 0.0
+        case .smart: return WarningSoftnessLevel.balanced.manualStrengthProgress
+        case .subtle: return 0.35
+        case .gentle: return 0.45
+        case .balanced: return 0.55
+        case .warm: return 0.65
+        case .extraWarm: return 0.75
+        }
+    }
+}
+
 enum LockScreenTheme: String, Codable, CaseIterable {
     case peachBunny
     case cloudPudding
@@ -136,6 +208,8 @@ struct LockScreenAppearance: Codable, Equatable {
 struct Settings: Codable {
     var lockTime: String
     var warningMinutes: Int
+    var warningSoftnessLevel: WarningSoftnessLevel
+    var smartSoftnessBias: Double
     var preventSleepEnabled: Bool
     var lockEnabled: Bool
     var forcedBreakMinutes: Int
@@ -147,6 +221,8 @@ struct Settings: Codable {
     static let `default` = Settings(
         lockTime: "00:00",
         warningMinutes: 30,
+        warningSoftnessLevel: .smart,
+        smartSoftnessBias: 0.5,
         preventSleepEnabled: true,
         lockEnabled: true,
         forcedBreakMinutes: 15,
@@ -157,7 +233,7 @@ struct Settings: Codable {
     )
 
     enum CodingKeys: String, CodingKey {
-        case lockTime, warningMinutes, preventSleepEnabled, lockEnabled
+        case lockTime, warningMinutes, warningSoftnessLevel, smartSoftnessBias, smartSoftnessPreference, preventSleepEnabled, lockEnabled
         case forcedBreakMinutes, appearance, autoStartEnabled, hasShownPermissionGuide
         case language
     }
@@ -165,6 +241,8 @@ struct Settings: Codable {
     init(
         lockTime: String,
         warningMinutes: Int,
+        warningSoftnessLevel: WarningSoftnessLevel,
+        smartSoftnessBias: Double,
         preventSleepEnabled: Bool,
         lockEnabled: Bool,
         forcedBreakMinutes: Int,
@@ -175,6 +253,8 @@ struct Settings: Codable {
     ) {
         self.lockTime = lockTime
         self.warningMinutes = warningMinutes
+        self.warningSoftnessLevel = warningSoftnessLevel
+        self.smartSoftnessBias = smartSoftnessBias
         self.preventSleepEnabled = preventSleepEnabled
         self.lockEnabled = lockEnabled
         self.forcedBreakMinutes = forcedBreakMinutes
@@ -190,6 +270,11 @@ struct Settings: Codable {
         self.lockTime = try container.decodeIfPresent(String.self, forKey: .lockTime) ?? Self.default.lockTime
         self.warningMinutes = try container.decodeIfPresent(Int.self, forKey: .warningMinutes)
             ?? Self.default.warningMinutes
+        self.warningSoftnessLevel = try container.decodeIfPresent(WarningSoftnessLevel.self, forKey: .warningSoftnessLevel)
+            ?? Self.default.warningSoftnessLevel
+        self.smartSoftnessBias = try container.decodeIfPresent(Double.self, forKey: .smartSoftnessBias)
+            ?? (try container.decodeIfPresent(SmartSoftnessPreference.self, forKey: .smartSoftnessPreference)?.defaultBias)
+            ?? Self.default.smartSoftnessBias
         self.preventSleepEnabled = try container.decodeIfPresent(Bool.self, forKey: .preventSleepEnabled)
             ?? Self.default.preventSleepEnabled
         self.lockEnabled = try container.decodeIfPresent(Bool.self, forKey: .lockEnabled)
@@ -206,10 +291,28 @@ struct Settings: Codable {
             ?? Self.default.language
     }
 
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+
+        try container.encode(lockTime, forKey: .lockTime)
+        try container.encode(warningMinutes, forKey: .warningMinutes)
+        try container.encode(warningSoftnessLevel, forKey: .warningSoftnessLevel)
+        try container.encode(smartSoftnessBias, forKey: .smartSoftnessBias)
+        try container.encode(preventSleepEnabled, forKey: .preventSleepEnabled)
+        try container.encode(lockEnabled, forKey: .lockEnabled)
+        try container.encode(forcedBreakMinutes, forKey: .forcedBreakMinutes)
+        try container.encode(appearance, forKey: .appearance)
+        try container.encode(autoStartEnabled, forKey: .autoStartEnabled)
+        try container.encode(hasShownPermissionGuide, forKey: .hasShownPermissionGuide)
+        try container.encode(language, forKey: .language)
+    }
+
     func validated() -> Settings {
         Settings(
             lockTime: lockTime,
             warningMinutes: max(1, warningMinutes),
+            warningSoftnessLevel: warningSoftnessLevel,
+            smartSoftnessBias: min(max(smartSoftnessBias, 0.0), 1.0),
             preventSleepEnabled: preventSleepEnabled,
             lockEnabled: lockEnabled,
             forcedBreakMinutes: max(1, forcedBreakMinutes),
