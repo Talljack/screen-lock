@@ -49,7 +49,7 @@ class ScreenManager {
     private(set) var statusMessage: String?
 
     private init() {
-        saveOriginalGamma()
+        restoreSystemColorState(resyncBaseline: true)
         observeDisplayChanges()
         observeApplicationChanges()
     }
@@ -150,6 +150,20 @@ class ScreenManager {
         }
 
         os_log("Gamma saved for %d displays", log: log, type: .info, originalGammaByDisplay.count)
+    }
+
+    private func restoreSystemColorState(resyncBaseline: Bool) {
+        isApplyingGammaUpdate = true
+        defer { isApplyingGammaUpdate = false }
+
+        // Restore the display pipeline back to the system-managed ColorSync state
+        // so turning softness "off" removes only ScreenLock's tint instead of
+        // restoring a previously tinted baseline.
+        CGDisplayRestoreColorSyncSettings()
+
+        if resyncBaseline {
+            saveOriginalGamma()
+        }
     }
 
     private func ensureOriginalGamma() {
@@ -888,17 +902,7 @@ class ScreenManager {
     func restoreOriginalGamma() {
         previewRestoreWorkItem?.cancel()
         previewRestoreWorkItem = nil
-        isApplyingGammaUpdate = true
-        defer { isApplyingGammaUpdate = false }
-
-        for (display, original) in originalGammaByDisplay {
-            CGSetDisplayTransferByFormula(
-                display,
-                original.red.min, original.red.max, original.red.gamma,
-                original.green.min, original.green.max, original.green.gamma,
-                original.blue.min, original.blue.max, original.blue.gamma
-            )
-        }
+        restoreSystemColorState(resyncBaseline: true)
 
         os_log("Original gamma restored", log: log, type: .info)
     }
