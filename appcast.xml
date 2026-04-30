@@ -6,15 +6,15 @@
         <description>Most recent updates to ScreenLock</description>
         <language>zh-cn</language>
         <item>
-            <title>Version 1.0.3</title>
-            <pubDate>Thu, 30 Apr 2026 12:43:54 +0000</pubDate>
-            <sparkle:version>46</sparkle:version>
-            <sparkle:shortVersionString>1.0.3</sparkle:shortVersionString>
+            <title>Version 1.0.4</title>
+            <pubDate>Thu, 30 Apr 2026 13:20:11 +0000</pubDate>
+            <sparkle:version>49</sparkle:version>
+            <sparkle:shortVersionString>1.0.4</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/Talljack/screen-lock/releases/download/v1.0.3/ScreenLock.dmg"
+            <enclosure url="https://github.com/Talljack/screen-lock/releases/download/v1.0.4/ScreenLock.dmg"
                        type="application/x-apple-diskimage"
-                       sparkle:edSignature="kQPzaJ6g1tBa7PXycn2tdSBis2aAd5jC7ecOXMWTlsWIg/8yanbi9frzvNcVQ05nUHg2UReKPRRv9YGsiTCbDw=="
-                       length="2151190"/>
+                       sparkle:edSignature="3c0fFoQcOzjHmOdTSW7daE5IqRC8epW5cqYZ0UFdzdBYr2zuZq//YDQOUv76HfgmdpuJW/cMf/SrxzWR0X97BA=="
+                       length="2139073"/>
         </item>
     </channel>
 </rss>
