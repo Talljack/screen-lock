@@ -25,6 +25,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         os_log("ScreenLock started — lock: %{public}@, warning: %d min",
                log: log, type: .info, settings.lockTime, settings.warningMinutes)
 
+        updaterController.startUpdater()
         updatePreventSleep(settings.preventSleepEnabled)
 
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, _ in
