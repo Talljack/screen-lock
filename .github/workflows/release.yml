@@ -291,7 +291,7 @@ jobs:
           DATE=$(date -u "+%a, %d %b %Y %H:%M:%S +0000")
           REPO="${{ github.repository }}"
           URL="https://github.com/${REPO}/releases/download/${TAG}/ScreenLock.dmg"
-          RELEASE_NOTES_URL="https://github.com/${REPO}/releases/tag/${TAG}"
+          FULL_RELEASE_NOTES_URL="https://github.com/${REPO}/releases/tag/${TAG}"
 
           cat > appcast.xml << APPCAST_EOF
           <?xml version="1.0" encoding="utf-8"?>
@@ -307,7 +307,10 @@ jobs:
                       <sparkle:version>${BUILD}</sparkle:version>
                       <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
                       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
-                      <sparkle:releaseNotesLink>${RELEASE_NOTES_URL}</sparkle:releaseNotesLink>
+                      <sparkle:fullReleaseNotesLink>${FULL_RELEASE_NOTES_URL}</sparkle:fullReleaseNotesLink>
+                      <description sparkle:format="markdown"><![CDATA[
+$(cat build/release_notes.md)
+                      ]]></description>
                       <enclosure url="${URL}"
                                  type="application/x-apple-diskimage"
                                  sparkle:edSignature="${SIG}"
