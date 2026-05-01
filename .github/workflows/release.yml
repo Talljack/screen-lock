@@ -292,33 +292,32 @@ jobs:
           REPO="${{ github.repository }}"
           URL="https://github.com/${REPO}/releases/download/${TAG}/ScreenLock.dmg"
           FULL_RELEASE_NOTES_URL="https://github.com/${REPO}/releases/tag/${TAG}"
-
-          cat > appcast.xml << APPCAST_EOF
-          <?xml version="1.0" encoding="utf-8"?>
-          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
-              <channel>
-                  <title>ScreenLock Updates</title>
-                  <link>https://github.com/${REPO}/releases</link>
-                  <description>Most recent updates to ScreenLock</description>
-                  <language>zh-cn</language>
-                  <item>
-                      <title>Version ${VERSION}</title>
-                      <pubDate>${DATE}</pubDate>
-                      <sparkle:version>${BUILD}</sparkle:version>
-                      <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
-                      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
-                      <sparkle:fullReleaseNotesLink>${FULL_RELEASE_NOTES_URL}</sparkle:fullReleaseNotesLink>
-                      <description sparkle:format="markdown"><![CDATA[
-$(cat build/release_notes.md)
-                      ]]></description>
-                      <enclosure url="${URL}"
-                                 type="application/x-apple-diskimage"
-                                 sparkle:edSignature="${SIG}"
-                                 length="${LEN}"/>
-                  </item>
-              </channel>
-          </rss>
-          APPCAST_EOF
+          {
+            printf '%s\n' '<?xml version="1.0" encoding="utf-8"?>'
+            printf '%s\n' '<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">'
+            printf '%s\n' '    <channel>'
+            printf '%s\n' '        <title>ScreenLock Updates</title>'
+            printf '%s\n' "        <link>https://github.com/${REPO}/releases</link>"
+            printf '%s\n' '        <description>Most recent updates to ScreenLock</description>'
+            printf '%s\n' '        <language>zh-cn</language>'
+            printf '%s\n' '        <item>'
+            printf '%s\n' "            <title>Version ${VERSION}</title>"
+            printf '%s\n' "            <pubDate>${DATE}</pubDate>"
+            printf '%s\n' "            <sparkle:version>${BUILD}</sparkle:version>"
+            printf '%s\n' "            <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>"
+            printf '%s\n' '            <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>'
+            printf '%s\n' "            <sparkle:fullReleaseNotesLink>${FULL_RELEASE_NOTES_URL}</sparkle:fullReleaseNotesLink>"
+            printf '%s\n' '            <description sparkle:format="markdown"><![CDATA['
+            cat build/release_notes.md
+            printf '%s\n' '            ]]></description>'
+            printf '%s\n' "            <enclosure url=\"${URL}\""
+            printf '%s\n' '                       type="application/x-apple-diskimage"'
+            printf '%s\n' "                       sparkle:edSignature=\"${SIG}\""
+            printf '%s\n' "                       length=\"${LEN}\"/>"
+            printf '%s\n' '        </item>'
+            printf '%s\n' '    </channel>'
+            printf '%s\n' '</rss>'
+          } > appcast.xml
           cp appcast.xml "$RUNNER_TEMP/appcast.xml"
 
       - name: Create GitHub Release
