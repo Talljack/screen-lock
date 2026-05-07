@@ -30,15 +30,11 @@ class StatsManager {
     }
 
     func record(event: LockEvent) {
-        let previousStreak = currentStreak
-        let previousTotal = events.count
         let previousAchievements = unlockedAchievements
 
         events.append(event)
         save()
 
-        let newStreak = currentStreak
-        let newTotal = events.count
         let newAchievements = unlockedAchievements
 
         let fresh = newAchievements.filter { new in
@@ -58,6 +54,10 @@ class StatsManager {
     // MARK: - Stats
 
     var totalCount: Int { events.count }
+
+    var averageLockHour: Double? {
+        Self.averageLockHour(for: events)
+    }
 
     var currentStreak: Int {
         let cal = Calendar.current
@@ -104,38 +104,97 @@ class StatsManager {
     }
 
     func averageLockHour(days: Int) -> Double? {
-        let cal = Calendar.current
-        let cutoff = cal.date(byAdding: .day, value: -days, to: Date())!
-        let recent = events.filter { $0.date >= cutoff }
-        guard !recent.isEmpty else { return nil }
-
-        let totalHours = recent.reduce(0.0) { sum, event in
-            let comps = cal.dateComponents([.hour, .minute], from: event.date)
-            var hour = Double(comps.hour ?? 0) + Double(comps.minute ?? 0) / 60.0
-            if hour < 6 { hour += 24 } // treat 0:00-5:59 as 24:00-29:59 for averaging
-            return sum + hour
-        }
-
-        var avg = totalHours / Double(recent.count)
-        if avg >= 24 { avg -= 24 }
-        return avg
+        Self.averageLockHour(
+            for: Self.eventsInLastCalendarDays(days, from: events)
+        )
     }
 
     /// Returns (day, count) pairs for the last N days.
     func dailyCounts(days: Int) -> [(date: Date, count: Int)] {
-        let cal = Calendar.current
-        let today = cal.startOfDay(for: Date())
+        Self.dailyCounts(for: events, days: days)
+    }
 
+    var preferredTrendPeriod: Int {
+        Self.preferredTrendPeriod(for: events)
+    }
+
+    static func averageLockHour(
+        for events: [LockEvent],
+        calendar: Calendar = .current
+    ) -> Double? {
+        guard !events.isEmpty else { return nil }
+
+        let totalHours = events.reduce(0.0) { sum, event in
+            sum + lockHour(for: event, calendar: calendar)
+        }
+
+        var avg = totalHours / Double(events.count)
+        if avg >= 24 { avg -= 24 }
+        return avg
+    }
+
+    static func dailyCounts(
+        for events: [LockEvent],
+        days: Int,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> [(date: Date, count: Int)] {
+        let today = calendar.startOfDay(for: now)
         var result: [(date: Date, count: Int)] = []
 
         for i in (0..<days).reversed() {
-            let day = cal.date(byAdding: .day, value: -i, to: today)!
-            let dayEnd = cal.date(byAdding: .day, value: 1, to: day)!
+            let day = calendar.date(byAdding: .day, value: -i, to: today)!
+            let dayEnd = calendar.date(byAdding: .day, value: 1, to: day)!
             let count = events.filter { $0.date >= day && $0.date < dayEnd }.count
             result.append((date: day, count: count))
         }
 
         return result
+    }
+
+    static func preferredTrendPeriod(
+        for events: [LockEvent],
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> Int {
+        if dailyCounts(for: events, days: 7, now: now, calendar: calendar).contains(where: { $0.count > 0 }) {
+            return 7
+        }
+        if dailyCounts(for: events, days: 30, now: now, calendar: calendar).contains(where: { $0.count > 0 }) {
+            return 30
+        }
+        return 7
+    }
+
+    private static func eventsInLastCalendarDays(
+        _ days: Int,
+        from events: [LockEvent],
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> [LockEvent] {
+        let today = calendar.startOfDay(for: now)
+        let start = calendar.date(byAdding: .day, value: -(days - 1), to: today)!
+        let end = calendar.date(byAdding: .day, value: 1, to: today)!
+        return events.filter { $0.date >= start && $0.date < end }
+    }
+
+    private static func lockHour(
+        for event: LockEvent,
+        calendar: Calendar
+    ) -> Double {
+        let parts = event.lockTime.split(separator: ":").compactMap { Int($0) }
+        let hour: Double
+
+        if parts.count == 2,
+           (0...23).contains(parts[0]),
+           (0...59).contains(parts[1]) {
+            hour = Double(parts[0]) + Double(parts[1]) / 60.0
+        } else {
+            let comps = calendar.dateComponents([.hour, .minute], from: event.date)
+            hour = Double(comps.hour ?? 0) + Double(comps.minute ?? 0) / 60.0
+        }
+
+        return hour < 6 ? hour + 24 : hour
     }
 
     // MARK: - Weekly Comparison

@@ -2,9 +2,11 @@ import Cocoa
 
 class StatsWindow: NSWindow {
 
-    private var periodDays = 7
+    private var periodDays: Int
 
     init() {
+        self.periodDays = StatsManager.shared.preferredTrendPeriod
+
         super.init(
             contentRect: NSRect(x: 0, y: 0, width: 560, height: 760),
             styleMask: [.titled, .closable, .miniaturizable],
@@ -71,7 +73,7 @@ class StatsWindow: NSWindow {
             streak: stats.currentStreak,
             longestStreak: stats.longestStreak,
             totalCount: stats.totalCount,
-            avgHour: stats.averageLockHour(days: periodDays)
+            avgHour: stats.averageLockHour
         )
         cardGrid.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(cardGrid)
@@ -126,7 +128,8 @@ class StatsWindow: NSWindow {
         chartContainer.layer?.cornerRadius = 14
         chartContainer.translatesAutoresizingMaskIntoConstraints = false
 
-        let chartView = BarChartView(data: stats.dailyCounts(days: periodDays))
+        let chartData = stats.dailyCounts(days: periodDays)
+        let chartView = BarChartView(data: chartData)
         chartView.translatesAutoresizingMaskIntoConstraints = false
         chartContainer.addSubview(chartView)
 
@@ -141,6 +144,19 @@ class StatsWindow: NSWindow {
             chartView.topAnchor.constraint(equalTo: chartContainer.topAnchor, constant: 12),
             chartView.bottomAnchor.constraint(equalTo: chartContainer.bottomAnchor, constant: -4),
         ])
+
+        if chartData.allSatisfy({ $0.count == 0 }) {
+            let emptyLabel = NSTextField(labelWithString: L("stats.chart_empty"))
+            emptyLabel.font = NSFont.systemFont(ofSize: 12, weight: .medium)
+            emptyLabel.textColor = .tertiaryLabelColor
+            emptyLabel.translatesAutoresizingMaskIntoConstraints = false
+            chartContainer.addSubview(emptyLabel)
+
+            NSLayoutConstraint.activate([
+                emptyLabel.centerXAnchor.constraint(equalTo: chartContainer.centerXAnchor),
+                emptyLabel.centerYAnchor.constraint(equalTo: chartContainer.centerYAnchor),
+            ])
+        }
         y += 216
 
         // Achievements section
