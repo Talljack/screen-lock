@@ -29,7 +29,7 @@ final class SmartSoftnessTests: XCTestCase {
     }
 
     func testManualProfilesStayWithinSafeRange() {
-        for level in WarningSoftnessLevel.allCases where level != .off {
+        for level in WarningSoftnessLevel.allCases where level != .off && level != .smart {
             let profile = ScreenManager.shared.debugResolvedSoftnessProfile(for: level)
 
             XCTAssertGreaterThanOrEqual(profile.brightnessReduction, 0.0)

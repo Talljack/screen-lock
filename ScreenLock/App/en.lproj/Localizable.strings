@@ -167,6 +167,7 @@
 /* Stats Window */
 "stats.title" = "Sleep Statistics";
 "stats.chart_title" = "Lock Trend";
+"stats.chart_empty" = "No lock records in this period yet";
 "stats.7days" = "7 Days";
 "stats.30days" = "30 Days";
 "stats.achievements" = "Achievements";

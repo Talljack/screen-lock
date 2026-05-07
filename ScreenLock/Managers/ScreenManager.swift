@@ -34,6 +34,7 @@ class ScreenManager {
     private var isSystemLockTriggered = false
     private var lockCompletion: (() -> Void)?
     private var currentLockAppearance: LockScreenAppearance?
+    private var currentLockTrigger: LockEvent.Trigger = .manual
     private var previousActivationPolicy: NSApplication.ActivationPolicy?
     private var previousPresentationOptions: NSApplication.PresentationOptions = []
     private var isLockModeActive = false
@@ -601,7 +602,7 @@ class ScreenManager {
         return true
     }
 
-    func lockScreenAndTurnOffDisplay(completion: (() -> Void)? = nil) {
+    func lockScreenAndTurnOffDisplay(trigger: LockEvent.Trigger, completion: (() -> Void)? = nil) {
         os_log("Showing forced break screen", log: log, type: .info)
 
         restoreOriginalGamma()
@@ -617,6 +618,7 @@ class ScreenManager {
         lockCompletion = completion
         isSystemLockTriggered = false
         currentLockAppearance = appearance
+        currentLockTrigger = trigger
 
         NSSound(named: "Glass")?.play()
 
@@ -659,7 +661,7 @@ class ScreenManager {
         let event = LockEvent(
             date: Date(),
             lockTime: settings.lockTime,
-            trigger: (ScheduleManager.shared.state == .locked) ? .scheduled : .manual,
+            trigger: currentLockTrigger,
             breakDurationSeconds: settings.forcedBreakMinutes * 60,
             completed: true
         )

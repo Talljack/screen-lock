@@ -12,6 +12,7 @@ enum ScheduleState {
 
 class ScheduleManager {
     static let shared = ScheduleManager()
+    private let graceWindowSeconds: TimeInterval = 5 * 60
 
     private var timer: Timer?
     private(set) var state: ScheduleState = .normal
@@ -59,12 +60,12 @@ class ScheduleManager {
 
         let warningStart = todayLock.addingTimeInterval(-Double(settings.warningMinutes) * 60)
 
-        // Grace window: within 2 minutes after lock time, still trigger lock.
-        let graceEnd = todayLock.addingTimeInterval(120)
+        // Grace window: within 5 minutes after lock time, still trigger lock.
+        let graceEnd = todayLock.addingTimeInterval(graceWindowSeconds)
 
         if now >= todayLock && now < graceEnd {
             if state != .locked {
-                transitionToLocked()
+                transitionToLocked(trigger: .scheduled)
             }
         } else if now >= warningStart && now < todayLock {
             let totalWarningInterval = max(Double(settings.warningMinutes) * 60, 1)
@@ -112,7 +113,7 @@ class ScheduleManager {
 
         // For evening times, if we're past the grace window, roll to tomorrow
         // so getTimeUntilLock shows the next occurrence.
-        let graceEnd = target.addingTimeInterval(120)
+        let graceEnd = target.addingTimeInterval(graceWindowSeconds)
         if now >= graceEnd && parts[0] >= 18 {
             return cal.date(byAdding: .day, value: 1, to: target)
         }
@@ -123,7 +124,7 @@ class ScheduleManager {
     /// Used for countdown display — always returns a future lock time.
     private func nextLockTime(for settings: Settings, now: Date) -> Date? {
         guard let today = todayOccurrence(of: settings.lockTime, relativeTo: now) else { return nil }
-        let graceEnd = today.addingTimeInterval(120)
+        let graceEnd = today.addingTimeInterval(graceWindowSeconds)
         if now >= graceEnd {
             return Calendar.current.date(byAdding: .day, value: 1, to: today)
         }
@@ -162,7 +163,7 @@ class ScheduleManager {
         }
     }
 
-    private func transitionToLocked() {
+    private func transitionToLocked(trigger: LockEvent.Trigger) {
         // Skip lock if displays are already asleep
         if ScreenManager.shared.areDisplaysAsleep() {
             os_log("Displays already asleep, skipping lock", log: log, type: .info)
@@ -172,7 +173,7 @@ class ScheduleManager {
 
         state = .locked
         os_log("State -> Locked", log: log, type: .info)
-        ScreenManager.shared.lockScreenAndTurnOffDisplay { [weak self] in
+        ScreenManager.shared.lockScreenAndTurnOffDisplay(trigger: trigger) { [weak self] in
             DispatchQueue.main.async {
                 self?.transitionToNormal()
             }
@@ -208,6 +209,6 @@ class ScheduleManager {
     }
 
     func lockNow() {
-        transitionToLocked()
+        transitionToLocked(trigger: .manual)
     }
 }

@@ -167,6 +167,7 @@
 /* Stats Window */
 "stats.title" = "锁屏统计";
 "stats.chart_title" = "锁屏趋势";
+"stats.chart_empty" = "当前时间范围内还没有锁屏记录";
 "stats.7days" = "7 天";
 "stats.30days" = "30 天";
 "stats.achievements" = "成就墙";
