@@ -6,31 +6,31 @@
         <description>Most recent updates to ScreenLock</description>
         <language>zh-cn</language>
         <item>
-            <title>Version 1.0.7</title>
-            <pubDate>Sat, 02 May 2026 11:28:42 +0000</pubDate>
-            <sparkle:version>59</sparkle:version>
-            <sparkle:shortVersionString>1.0.7</sparkle:shortVersionString>
+            <title>Version 1.0.8</title>
+            <pubDate>Fri, 08 May 2026 00:32:03 +0000</pubDate>
+            <sparkle:version>62</sparkle:version>
+            <sparkle:shortVersionString>1.0.8</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
-            <sparkle:fullReleaseNotesLink>https://github.com/Talljack/screen-lock/releases/tag/v1.0.7</sparkle:fullReleaseNotesLink>
+            <sparkle:fullReleaseNotesLink>https://github.com/Talljack/screen-lock/releases/tag/v1.0.8</sparkle:fullReleaseNotesLink>
             <description sparkle:format="markdown"><![CDATA[
-## ScreenLock v1.0.7
+## ScreenLock v1.0.8
 
 ### Highlights
 - Universal binary — runs natively on Intel (x86_64) and Apple Silicon (arm64) Macs
 - Signed with Developer ID and notarized by Apple — no Gatekeeper warnings
 
 ### Changes
-See [changes since v1.0.6](https://github.com/Talljack/screen-lock/compare/v1.0.6...v1.0.7) for full details.
+See [changes since v1.0.7](https://github.com/Talljack/screen-lock/compare/v1.0.7...v1.0.8) for full details.
 
 ### Install
 1. Download `ScreenLock.dmg` below
 2. Open the DMG and drag `ScreenLock.app` to `Applications`
 3. The app runs in the menu bar
             ]]></description>
-            <enclosure url="https://github.com/Talljack/screen-lock/releases/download/v1.0.7/ScreenLock.dmg"
+            <enclosure url="https://github.com/Talljack/screen-lock/releases/download/v1.0.8/ScreenLock.dmg"
                        type="application/x-apple-diskimage"
-                       sparkle:edSignature="pODvUfpSV48Iyp0/04kgx6IsiZxN0cyy20YX8qTzc3/PcYKITAIF4jeNwzzQxP/lbWzshUF4KgeH9iTqtBUDBg=="
-                       length="2139103"/>
+                       sparkle:edSignature="mlTSotuLQUJV1HJrWbdNkn0NR+2d7cf/ZNIPlZfgVbSzSVHYRR27cVP3vLrLoCaFmaAk0KFwO3c34yTpnQuWCA=="
+                       length="2142606"/>
         </item>
     </channel>
 </rss>
