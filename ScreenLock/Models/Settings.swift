@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 
 enum SmartSoftnessPreference: String, Codable, CaseIterable {
@@ -190,6 +191,15 @@ struct LockScreenAppearance: Codable, Equatable {
         }
 
         return a
+    }
+
+    func resolvedBackgroundImage() -> NSImage? {
+        guard let path = backgroundImagePath?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !path.isEmpty else {
+            return nil
+        }
+
+        return NSImage(contentsOfFile: path)
     }
 
     /// Returns an appearance with random copy from the theme pool.

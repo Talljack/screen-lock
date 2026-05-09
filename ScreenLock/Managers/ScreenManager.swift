@@ -8,6 +8,17 @@ private let log = OSLog(subsystem: "com.yugangcao.screenlock", category: "Screen
 class ScreenManager {
     static let shared = ScreenManager()
 
+    struct SleepTransitionState: Equatable {
+        var inactiveSince: Date?
+        var lastWakeAt: Date?
+
+        func crossed(_ moment: Date, now: Date) -> Bool {
+            guard let inactiveSince, inactiveSince <= moment else { return false }
+            let wakeReference = lastWakeAt ?? now
+            return wakeReference >= moment
+        }
+    }
+
     struct SoftnessProfile: Equatable {
         let brightnessReduction: Double
         let warmthStrength: Double
@@ -21,7 +32,6 @@ class ScreenManager {
     )
 
     private var originalGammaByDisplay: [CGDirectDisplayID: DisplayGamma] = [:]
-    private var capturedDisplayIDs: Set<CGDirectDisplayID> = []
 
     private var isDimming = false
     private var dimmingTimer: Timer?
@@ -29,7 +39,7 @@ class ScreenManager {
     private var dimmingDurationSeconds: TimeInterval = 0
     private var currentDimmingProgress: Float = 0
     private var lockWindows: [LockScreenWindow] = []
-    private var lockTimer: Timer?
+    private var lockTimer: DispatchSourceTimer?
     private var remainingLockSeconds = 0
     private var isSystemLockTriggered = false
     private var lockCompletion: (() -> Void)?
@@ -38,13 +48,16 @@ class ScreenManager {
     private var previousActivationPolicy: NSApplication.ActivationPolicy?
     private var previousPresentationOptions: NSApplication.PresentationOptions = []
     private var isLockModeActive = false
+    private var isAwaitingLockActivation = false
+    private var hasPresentedLockWindows = false
+    private var sleepTransitionState = SleepTransitionState()
     private var notificationObservers: [NSObjectProtocol] = []
     private var workspaceObservers: [NSObjectProtocol] = []
     private var reactivationWorkItems: [DispatchWorkItem] = []
-    private var competingAppMonitorTimer: Timer?
     private var previewRestoreWorkItem: DispatchWorkItem?
     private var isManualSoftnessPreviewActive = false
     private var isApplyingGammaUpdate = false
+    private var isApplyingLockModeTransition = false
 
     /// Tracks whether any API capability is degraded.
     private(set) var statusMessage: String?
@@ -55,6 +68,19 @@ class ScreenManager {
         observeApplicationChanges()
     }
 
+    private func cancelLockTimer(reason: String) {
+        guard let lockTimer else { return }
+        os_log(
+            "Cancelling lock countdown at %d seconds (%{public}@)",
+            log: log,
+            type: .info,
+            remainingLockSeconds,
+            reason
+        )
+        lockTimer.cancel()
+        self.lockTimer = nil
+    }
+
     private func observeDisplayChanges() {
         let observer = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
@@ -62,21 +88,62 @@ class ScreenManager {
         ) { [weak self] _ in
             guard let self = self else { return }
             guard !self.isApplyingGammaUpdate else { return }
-            os_log("Display configuration changed — refreshing gamma map", log: log, type: .info)
+            if self.isApplyingLockModeTransition {
+                os_log(
+                    "Display configuration changed during lock mode transition — skipping rebuild",
+                    log: log,
+                    type: .info
+                )
+                self.saveOriginalGamma()
+                return
+            }
+            os_log(
+                "Display configuration changed — refreshing gamma map (lockActive=%{public}@, windows=%d, remaining=%d)",
+                log: log,
+                type: .info,
+                self.isLockModeActive ? "true" : "false",
+                self.lockWindows.count,
+                self.remainingLockSeconds
+            )
             self.saveOriginalGamma()
-            self.syncCapturedDisplays()
             self.rebuildLockWindowsIfNeeded(animated: false)
         }
         notificationObservers.append(observer)
     }
 
     private func observeApplicationChanges() {
+        let appDidBecomeActive = NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification,
+            object: NSApp,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self = self else { return }
+            os_log(
+                "App became active (lockActive=%{public}@, awaiting=%{public}@, presented=%{public}@)",
+                log: log,
+                type: .info,
+                self.isLockModeActive ? "true" : "false",
+                self.isAwaitingLockActivation ? "true" : "false",
+                self.hasPresentedLockWindows ? "true" : "false"
+            )
+            self.completePendingLockPresentationIfNeeded()
+        }
+        notificationObservers.append(appDidBecomeActive)
+
         let appDidResignActive = NotificationCenter.default.addObserver(
             forName: NSApplication.didResignActiveNotification,
             object: NSApp,
             queue: .main
         ) { [weak self] _ in
-            self?.reactivateLockModeIfNeeded()
+            guard let self = self else { return }
+            os_log(
+                "App resigned active (lockActive=%{public}@, windows=%d)",
+                log: log,
+                type: .info,
+                self.isLockModeActive ? "true" : "false",
+                self.lockWindows.count
+            )
+            self.reactivateLockModeIfNeeded()
         }
         notificationObservers.append(appDidResignActive)
 
@@ -87,28 +154,53 @@ class ScreenManager {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.reactivateLockModeIfNeeded()
+            guard let self = self else { return }
+            os_log(
+                "Active space changed (lockActive=%{public}@, windows=%d)",
+                log: log,
+                type: .info,
+                self.isLockModeActive ? "true" : "false",
+                self.lockWindows.count
+            )
+            self.reactivateLockModeIfNeeded()
         }
         workspaceObservers.append(activeSpaceChanged)
 
-        let appActivated = workspaceCenter.addObserver(
-            forName: NSWorkspace.didActivateApplicationNotification,
+        let screensDidSleep = workspaceCenter.addObserver(
+            forName: NSWorkspace.screensDidSleepNotification,
             object: nil,
             queue: .main
-        ) { [weak self] notification in
-            guard
-                let self = self,
-                self.isLockModeActive,
-                let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
-                app.processIdentifier != ProcessInfo.processInfo.processIdentifier
-            else {
-                return
-            }
-
-            self.suppressCompetingApplication(app)
-            self.reactivateLockModeIfNeeded()
+        ) { [weak self] _ in
+            self?.handleSystemInactivityStarted(reason: "screens slept")
         }
-        workspaceObservers.append(appActivated)
+        workspaceObservers.append(screensDidSleep)
+
+        let screensDidWake = workspaceCenter.addObserver(
+            forName: NSWorkspace.screensDidWakeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.handleSystemWake(reason: "screens woke")
+        }
+        workspaceObservers.append(screensDidWake)
+
+        let willSleep = workspaceCenter.addObserver(
+            forName: NSWorkspace.willSleepNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.handleSystemInactivityStarted(reason: "system will sleep")
+        }
+        workspaceObservers.append(willSleep)
+
+        let didWake = workspaceCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.handleSystemWake(reason: "system woke")
+        }
+        workspaceObservers.append(didWake)
     }
 
     private func activeDisplayIDs() -> [CGDirectDisplayID] {
@@ -619,35 +711,58 @@ class ScreenManager {
         isSystemLockTriggered = false
         currentLockAppearance = appearance
         currentLockTrigger = trigger
+        hasPresentedLockWindows = false
+        isAwaitingLockActivation = false
 
         NSSound(named: "Glass")?.play()
 
         enterLockMode()
-        captureDisplays()
-        rebuildLockWindows(animated: true)
-
-        startLockCountdown()
+        requestLockActivationAndPresent()
     }
 
     private func startLockCountdown() {
-        lockTimer?.invalidate()
+        cancelLockTimer(reason: "restarting countdown")
         updateLockWindows()
+        os_log(
+            "Starting lock countdown from %d seconds",
+            log: log,
+            type: .info,
+            remainingLockSeconds
+        )
 
-        lockTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        timer.schedule(deadline: .now() + 1.0, repeating: 1.0)
+        timer.setEventHandler { [weak self] in
             guard let self = self else { return }
 
             self.remainingLockSeconds -= 1
+            os_log(
+                "Lock timer handler fired; remaining=%d",
+                log: log,
+                type: .info,
+                self.remainingLockSeconds
+            )
             self.updateLockWindows()
 
             if self.remainingLockSeconds <= 0 {
-                timer.invalidate()
-                self.lockTimer = nil
+                self.cancelLockTimer(reason: "countdown completed")
                 self.completeLockSequence()
             }
         }
+        lockTimer = timer
+        timer.setCancelHandler {
+            os_log("Lock timer cancel handler executed", log: log, type: .info)
+        }
+        timer.resume()
     }
 
     private func updateLockWindows() {
+        os_log(
+            "Lock countdown tick: %d",
+            log: log,
+            type: .info,
+            max(remainingLockSeconds, 0)
+        )
         for window in lockWindows {
             window.updateRemainingSeconds(max(remainingLockSeconds, 0))
         }
@@ -700,9 +815,10 @@ class ScreenManager {
     }
 
     private func closeLockWindows(force: Bool) {
-        lockTimer?.invalidate()
-        lockTimer = nil
+        cancelLockTimer(reason: "closing lock windows")
         currentLockAppearance = nil
+        hasPresentedLockWindows = false
+        isAwaitingLockActivation = false
 
         if force {
             disposeLockWindows()
@@ -722,9 +838,16 @@ class ScreenManager {
         let windows = lockWindows
         lockWindows.removeAll()
 
+        os_log(
+            "Disposing %d lock windows",
+            log: log,
+            type: .info,
+            windows.count
+        )
+
         for window in windows {
             window.allowDismiss()
-            window.orderOut(nil)
+            window.close()
         }
     }
 
@@ -734,27 +857,37 @@ class ScreenManager {
         isLockModeActive = true
         previousActivationPolicy = NSApp.activationPolicy()
         previousPresentationOptions = NSApp.presentationOptions
+        isApplyingLockModeTransition = true
 
-        _ = NSApp.setActivationPolicy(.accessory)
+        if lockWindows.isEmpty, currentLockAppearance != nil {
+            os_log("Preparing lock windows before applying lock mode restrictions", log: log, type: .info)
+            rebuildLockWindows(animated: false)
+        }
+
         NSApp.presentationOptions = [
+            .autoHideDock,
+            .autoHideMenuBar,
             .disableProcessSwitching,
             .disableHideApplication,
             .disableForceQuit,
-            .disableSessionTermination,
-            .hideDock,
-            .hideMenuBar
+            .disableSessionTermination
         ]
 
-        suppressFrontmostApplicationIfNeeded()
-        startCompetingAppMonitor()
+        NSRunningApplication.current.unhide()
+        NSApp.unhide(nil)
+        isApplyingLockModeTransition = false
+        os_log(
+            "Entered lock mode; previous policy=%{public}ld",
+            log: log,
+            type: .info,
+            previousActivationPolicy?.rawValue ?? -1
+        )
     }
 
     private func exitLockMode() {
         guard isLockModeActive else { return }
 
         cancelPendingReactivations()
-        stopCompetingAppMonitor()
-        releaseCapturedDisplays()
         NSApp.presentationOptions = previousPresentationOptions
         if let previousActivationPolicy = previousActivationPolicy {
             _ = NSApp.setActivationPolicy(previousActivationPolicy)
@@ -766,6 +899,24 @@ class ScreenManager {
 
     private func rebuildLockWindowsIfNeeded(animated: Bool) {
         guard isLockModeActive else { return }
+        if isAwaitingLockActivation && !hasPresentedLockWindows {
+            os_log(
+                "Skipping lock window rebuild while awaiting activation (windows=%d, remaining=%d)",
+                log: log,
+                type: .info,
+                lockWindows.count,
+                remainingLockSeconds
+            )
+            return
+        }
+        os_log(
+            "Rebuild requested while locked (animated=%{public}@, windows=%d, remaining=%d)",
+            log: log,
+            type: .info,
+            animated ? "true" : "false",
+            lockWindows.count,
+            remainingLockSeconds
+        )
         rebuildLockWindows(animated: animated)
     }
 
@@ -773,6 +924,13 @@ class ScreenManager {
         guard let appearance = currentLockAppearance else { return }
 
         disposeLockWindows()
+        os_log(
+            "Rebuilding lock windows for %d screens (animated=%{public}@)",
+            log: log,
+            type: .info,
+            NSScreen.screens.count,
+            animated ? "true" : "false"
+        )
 
         for screen in NSScreen.screens {
             let window = LockScreenWindow(
@@ -781,45 +939,115 @@ class ScreenManager {
                 appearance: appearance
             )
             lockWindows.append(window)
+        }
 
-            if animated {
-                window.orderFrontRegardless()
+        activateLockWindows(animated: animated)
+    }
+
+    private func activateLockWindows(animated: Bool) {
+        guard isLockModeActive, !lockWindows.isEmpty else { return }
+        let isActive = NSApp.isActive
+
+        os_log(
+            "Activating lock windows (animated=%{public}@, active=%{public}@, windows=%d)",
+            log: log,
+            type: .info,
+            animated ? "true" : "false",
+            isActive ? "true" : "false",
+            lockWindows.count
+        )
+
+        let isFirstPresentation = !hasPresentedLockWindows
+        if isFirstPresentation {
+            hasPresentedLockWindows = true
+        }
+        isAwaitingLockActivation = !isActive
+
+        for window in lockWindows {
+            if animated && isActive {
+                window.reinforceFrontmost()
                 window.animateIn()
             } else {
                 window.showImmediately()
             }
         }
 
-        activateLockWindows()
+        os_log("Presenting lock windows (active=true)", log: log, type: .info)
+        lockWindows.first?.makeKeyAndOrderFront(nil)
+
+        if isFirstPresentation && lockTimer == nil {
+            startLockCountdown()
+        }
+
+        if !isActive {
+            os_log(
+                "Lock windows waiting for activation (animated=%{public}@, windows=%d)",
+                log: log,
+                type: .info,
+                animated ? "true" : "false",
+                lockWindows.count
+            )
+            requestAppActivation()
+        }
+    }
+
+    private func activateLockWindowsIfNeeded() {
+        guard isLockModeActive else { return }
+        activateLockWindows(animated: false)
     }
 
     private func reactivateLockModeIfNeeded() {
-        guard isLockModeActive else { return }
-        suppressFrontmostApplicationIfNeeded()
-        activateLockWindows()
+        guard isLockModeActive, !lockWindows.isEmpty else { return }
+        activateLockWindows(animated: false)
         scheduleReactivationBurst()
     }
 
-    private func activateLockWindows() {
-        guard isLockModeActive, !lockWindows.isEmpty else { return }
+    private func requestLockActivationAndPresent() {
+        guard isLockModeActive else { return }
 
-        _ = NSApp.setActivationPolicy(.accessory)
-        NSRunningApplication.current.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
-        NSApp.activate(ignoringOtherApps: true)
+        os_log("Requesting lock activation", log: log, type: .info)
 
-        for window in lockWindows {
-            window.reinforceFrontmost()
+        if lockWindows.isEmpty {
+            rebuildLockWindows(animated: false)
+        } else {
+            activateLockWindows(animated: false)
         }
 
-        lockWindows.first?.makeKeyAndOrderFront(nil)
+        scheduleReactivationBurst()
+        completePendingLockPresentationIfNeeded()
+    }
+
+    private func requestAppActivation() {
+        os_log("Requesting app activation", log: log, type: .info)
+        NSRunningApplication.current.unhide()
+        NSApp.unhide(nil)
+        NSRunningApplication.current.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func completePendingLockPresentationIfNeeded() {
+        guard isAwaitingLockActivation, isLockModeActive else { return }
+        guard NSApp.isActive else {
+            os_log("Lock presentation still waiting for active app", log: log, type: .info)
+            return
+        }
+
+        os_log("Lock activation confirmed; presenting lock windows", log: log, type: .info)
+        isAwaitingLockActivation = false
+        if lockWindows.isEmpty {
+            rebuildLockWindows(animated: true)
+        } else {
+            activateLockWindows(animated: false)
+        }
     }
 
     private func scheduleReactivationBurst() {
         cancelPendingReactivations()
 
-        for delay in [0.05, 0.2, 0.5] {
+        for delay in [0.0, 0.05, 0.2, 0.6] {
             let workItem = DispatchWorkItem { [weak self] in
-                self?.activateLockWindows()
+                self?.activateLockWindowsIfNeeded()
+                self?.completePendingLockPresentationIfNeeded()
             }
             reactivationWorkItems.append(workItem)
             DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
@@ -833,72 +1061,56 @@ class ScreenManager {
         reactivationWorkItems.removeAll()
     }
 
-    private func startCompetingAppMonitor() {
-        competingAppMonitorTimer?.invalidate()
-        competingAppMonitorTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            self?.suppressFrontmostApplicationIfNeeded()
-        }
-        if let competingAppMonitorTimer {
-            RunLoop.current.add(competingAppMonitorTimer, forMode: .common)
-        }
+    private func handleSystemInactivityStarted(reason: String) {
+        sleepTransitionState.inactiveSince = Date()
+        os_log(
+            "Observed inactivity start: %{public}@ (lockActive=%{public}@, windows=%d, remaining=%d)",
+            log: log,
+            type: .info,
+            reason,
+            isLockModeActive ? "true" : "false",
+            lockWindows.count,
+            remainingLockSeconds
+        )
+        abortActiveLockSequence(reason: reason)
     }
 
-    private func stopCompetingAppMonitor() {
-        competingAppMonitorTimer?.invalidate()
-        competingAppMonitorTimer = nil
+    private func handleSystemWake(reason: String) {
+        sleepTransitionState.lastWakeAt = Date()
+        os_log(
+            "Observed wake: %{public}@ (lockActive=%{public}@, windows=%d, remaining=%d)",
+            log: log,
+            type: .info,
+            reason,
+            isLockModeActive ? "true" : "false",
+            lockWindows.count,
+            remainingLockSeconds
+        )
+        abortActiveLockSequence(reason: reason)
     }
 
-    private func suppressFrontmostApplicationIfNeeded() {
-        guard isLockModeActive else { return }
-        guard let frontmost = NSWorkspace.shared.frontmostApplication else { return }
-        suppressCompetingApplication(frontmost)
+    private func abortActiveLockSequence(reason: String) {
+        guard isLockModeActive || lockTimer != nil || !lockWindows.isEmpty else { return }
+
+        os_log("Aborting lock UI due to %{public}@", log: log, type: .info, reason)
+
+        cancelLockTimer(reason: "aborting lock UI: \(reason)")
+        remainingLockSeconds = 0
+        currentLockAppearance = nil
+        isSystemLockTriggered = false
+        hasPresentedLockWindows = false
+        isAwaitingLockActivation = false
+        cancelPendingReactivations()
+        disposeLockWindows()
+        exitLockMode()
+
+        let completion = lockCompletion
+        lockCompletion = nil
+        completion?()
     }
 
-    private func suppressCompetingApplication(_ app: NSRunningApplication) {
-        guard isLockModeActive else { return }
-        guard app.processIdentifier != ProcessInfo.processInfo.processIdentifier else { return }
-        guard !app.isTerminated else { return }
-
-        // Hide the competing app before re-activating ScreenLock. This cuts
-        // down the visible flash when macOS briefly hands focus away.
-        if !app.isHidden {
-            _ = app.hide()
-        }
-
-        activateLockWindows()
-    }
-
-    private func captureDisplays() {
-        for display in activeDisplayIDs() {
-            guard !capturedDisplayIDs.contains(display) else { continue }
-
-            let result = CGDisplayCapture(display)
-            if result == .success {
-                capturedDisplayIDs.insert(display)
-            } else {
-                os_log("Failed to capture display %{public}d: %{public}d", log: log, type: .error, display, result.rawValue)
-            }
-        }
-    }
-
-    private func syncCapturedDisplays() {
-        let activeDisplays = Set(activeDisplayIDs())
-
-        for display in capturedDisplayIDs.subtracting(activeDisplays) {
-            CGDisplayRelease(display)
-            capturedDisplayIDs.remove(display)
-        }
-
-        if isLockModeActive {
-            captureDisplays()
-        }
-    }
-
-    private func releaseCapturedDisplays() {
-        for display in capturedDisplayIDs {
-            CGDisplayRelease(display)
-        }
-        capturedDisplayIDs.removeAll()
+    func didSleepThrough(_ moment: Date, now: Date = Date()) -> Bool {
+        sleepTransitionState.crossed(moment, now: now)
     }
 
     func restoreOriginalGamma() {
