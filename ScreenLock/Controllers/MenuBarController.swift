@@ -1018,8 +1018,7 @@ class MenuBarController {
         root.layer?.addSublayer(bgLayer)
 
         // Custom background image (if user selected one)
-        if let bgPath = appearance.backgroundImagePath, !bgPath.isEmpty,
-           let bgImage = NSImage(contentsOfFile: bgPath) {
+        if let bgImage = appearance.resolvedBackgroundImage() {
             let imageView = NSImageView(frame: root.bounds)
             imageView.image = bgImage
             imageView.imageScaling = .scaleProportionallyUpOrDown

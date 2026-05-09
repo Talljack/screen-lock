@@ -2,6 +2,53 @@ import XCTest
 @testable import ScreenLock
 
 final class ScheduleLogicTests: XCTestCase {
+    func testNextCheckDelayAlignsToWarningBoundaryBeforeWarningStarts() {
+        let manager = ScheduleManager.shared
+        var settings = Settings.default
+        settings.lockEnabled = true
+        settings.lockTime = "10:28"
+        settings.warningMinutes = 1
+
+        let now = Calendar.current.date(from: DateComponents(
+            year: 2026, month: 5, day: 9, hour: 10, minute: 26, second: 5
+        ))!
+
+        XCTAssertEqual(manager.nextCheckDelay(for: settings, now: now), 55, accuracy: 0.1)
+    }
+
+    func testNextCheckDelayPollsEverySecondDuringWarningWindow() {
+        let manager = ScheduleManager.shared
+        var settings = Settings.default
+        settings.lockEnabled = true
+        settings.lockTime = "10:28"
+        settings.warningMinutes = 1
+
+        let now = Calendar.current.date(from: DateComponents(
+            year: 2026, month: 5, day: 9, hour: 10, minute: 27, second: 30
+        ))!
+
+        XCTAssertEqual(manager.nextCheckDelay(for: settings, now: now), 1, accuracy: 0.1)
+    }
+
+    func testSleepTransitionStateDetectsLockWasMissedDuringSleep() {
+        let lockMoment = Date(timeIntervalSince1970: 1_000)
+        let state = ScreenManager.SleepTransitionState(
+            inactiveSince: Date(timeIntervalSince1970: 900),
+            lastWakeAt: Date(timeIntervalSince1970: 1_100)
+        )
+
+        XCTAssertTrue(state.crossed(lockMoment, now: Date(timeIntervalSince1970: 1_100)))
+    }
+
+    func testSleepTransitionStateIgnoresSleepThatStartedAfterLockTime() {
+        let lockMoment = Date(timeIntervalSince1970: 1_000)
+        let state = ScreenManager.SleepTransitionState(
+            inactiveSince: Date(timeIntervalSince1970: 1_050),
+            lastWakeAt: Date(timeIntervalSince1970: 1_100)
+        )
+
+        XCTAssertFalse(state.crossed(lockMoment, now: Date(timeIntervalSince1970: 1_100)))
+    }
 
     // MARK: - Copy system
 
@@ -101,6 +148,19 @@ final class ScheduleLogicTests: XCTestCase {
         XCTAssertEqual(validated.subtitleText, expected.subtitle)
         XCTAssertEqual(validated.footerText, expected.footer)
         XCTAssertNil(validated.backgroundImagePath)
+    }
+
+    func testResolvedBackgroundImageReturnsNilForMissingFile() {
+        let appearance = LockScreenAppearance(
+            theme: .peachBunny,
+            titleText: "t",
+            subtitleText: "s",
+            footerText: "f",
+            backgroundImagePath: "/tmp/does-not-exist-screen-lock-test.png",
+            isCustomCopy: true
+        )
+
+        XCTAssertNil(appearance.resolvedBackgroundImage())
     }
 
     func testValidatedSettingsPreserveWarningSoftnessLevel() {

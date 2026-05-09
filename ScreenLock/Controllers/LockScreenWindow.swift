@@ -69,7 +69,7 @@ private final class LockScreenBackgroundView: NSView {
     private let imageView = NSImageView()
     private var dynamicBgView: DynamicBackgroundView?
 
-    init(palette: LockScreenPalette, theme: LockScreenTheme, backgroundImagePath: String?) {
+    init(palette: LockScreenPalette, theme: LockScreenTheme, backgroundImage: NSImage?) {
         super.init(frame: .zero)
         wantsLayer = true
 
@@ -78,9 +78,7 @@ private final class LockScreenBackgroundView: NSView {
         gradientLayer.endPoint = CGPoint(x: 1, y: 0)
         layer?.addSublayer(gradientLayer)
 
-        let hasCustomImage = backgroundImagePath != nil && !backgroundImagePath!.isEmpty
-
-        if hasCustomImage {
+        if let backgroundImage {
             imageView.imageScaling = .scaleAxesIndependently
             imageView.translatesAutoresizingMaskIntoConstraints = false
             addSubview(imageView)
@@ -90,7 +88,7 @@ private final class LockScreenBackgroundView: NSView {
                 imageView.topAnchor.constraint(equalTo: topAnchor),
                 imageView.bottomAnchor.constraint(equalTo: bottomAnchor)
             ])
-            imageView.image = NSImage(contentsOfFile: backgroundImagePath!)
+            imageView.image = backgroundImage
         } else {
             let bgView = DynamicBackgroundView(theme: theme)
             bgView.translatesAutoresizingMaskIntoConstraints = false
@@ -124,7 +122,6 @@ class LockScreenWindow: NSWindow {
     private var countdownLabel: NSTextField?
     private var cardView: NSVisualEffectView?
     private var allowClose = false
-    private var keepOnTopTimer: Timer?
 
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
@@ -166,22 +163,6 @@ class LockScreenWindow: NSWindow {
             card.add(spring, forKey: "cardEntrance")
             card.transform = CATransform3DIdentity
         }
-
-        // Keep window on top during gestures
-        NotificationCenter.default.addObserver(
-            forName: NSWindow.didResignKeyNotification,
-            object: self,
-            queue: .main
-        ) { [weak self] _ in
-            self?.orderFrontRegardless()
-            self?.makeKeyAndOrderFront(nil)
-        }
-
-        // Continuously ensure window stays on top (handles touchscreen gestures)
-        keepOnTopTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            guard let self = self, !self.allowClose else { return }
-            self.reinforceFrontmost()
-        }
     }
 
     func showImmediately() {
@@ -196,15 +177,11 @@ class LockScreenWindow: NSWindow {
     }
 
     private func setupWindow() {
-        // Use maximum window level to ensure lock screen stays on top
-        // CGShieldingWindowLevel() is the highest system level
-        level = NSWindow.Level(rawValue: Int(CGShieldingWindowLevel()))
+        level = .screenSaver
         collectionBehavior = [
             .canJoinAllSpaces,
             .fullScreenAuxiliary,
-            .moveToActiveSpace,
             .stationary,
-            .transient,
             .ignoresCycle
         ]
         isOpaque = true
@@ -227,7 +204,7 @@ class LockScreenWindow: NSWindow {
         let backgroundView = LockScreenBackgroundView(
             palette: palette,
             theme: lockAppearance.theme,
-            backgroundImagePath: lockAppearance.backgroundImagePath
+            backgroundImage: lockAppearance.resolvedBackgroundImage()
         )
         backgroundView.translatesAutoresizingMaskIntoConstraints = false
         contentView = backgroundView
@@ -332,14 +309,10 @@ class LockScreenWindow: NSWindow {
 
     func allowDismiss() {
         allowClose = true
-        keepOnTopTimer?.invalidate()
-        keepOnTopTimer = nil
     }
 
     func dismissForSystemLock() {
         allowClose = true
-        keepOnTopTimer?.invalidate()
-        keepOnTopTimer = nil
         orderOut(nil)
     }
 
@@ -348,8 +321,6 @@ class LockScreenWindow: NSWindow {
             NSSound.beep()
             return
         }
-        keepOnTopTimer?.invalidate()
-        keepOnTopTimer = nil
         super.close()
     }
 

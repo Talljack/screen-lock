@@ -24,12 +24,6 @@ class ScheduleManager {
 
     func start() {
         stop()
-
-        timer = Timer.scheduledTimer(withTimeInterval: 60.0, repeats: true) { [weak self] _ in
-            self?.checkSchedule()
-        }
-        RunLoop.current.add(timer!, forMode: .common)
-
         checkSchedule()
         os_log("Started", log: log, type: .info)
     }
@@ -42,6 +36,7 @@ class ScheduleManager {
 
     func checkSchedule() {
         let settings = SettingsManager.shared.settings
+        defer { scheduleNextCheck(using: settings) }
 
         if !settings.lockEnabled {
             if state != .normal {
@@ -64,6 +59,15 @@ class ScheduleManager {
         let graceEnd = todayLock.addingTimeInterval(graceWindowSeconds)
 
         if now >= todayLock && now < graceEnd {
+            if ScreenManager.shared.didSleepThrough(todayLock, now: now) {
+                os_log("Skipping scheduled lock because the system slept through the lock time", log: log, type: .info)
+                if state != .normal {
+                    transitionToNormal()
+                }
+                ScreenManager.shared.applyCurrentSoftnessSetting()
+                return
+            }
+
             if state != .locked {
                 transitionToLocked(trigger: .scheduled)
             }
@@ -210,5 +214,44 @@ class ScheduleManager {
 
     func lockNow() {
         transitionToLocked(trigger: .manual)
+    }
+
+    func nextCheckDelay(for settings: Settings, now: Date) -> TimeInterval {
+        guard settings.lockEnabled else { return 60.0 }
+        guard let todayLock = todayOccurrence(of: settings.lockTime, relativeTo: now) else {
+            return 60.0
+        }
+
+        let warningStart = todayLock.addingTimeInterval(-Double(settings.warningMinutes) * 60)
+        let graceEnd = todayLock.addingTimeInterval(graceWindowSeconds)
+
+        if now < warningStart {
+            return max(1.0, min(60.0, warningStart.timeIntervalSince(now)))
+        }
+
+        if now < graceEnd {
+            return 1.0
+        }
+
+        guard let nextLock = nextLockTime(for: settings, now: now) else {
+            return 60.0
+        }
+
+        let nextWarningStart = nextLock.addingTimeInterval(-Double(settings.warningMinutes) * 60)
+        let nextBoundary = min(nextWarningStart, nextLock)
+        return max(1.0, min(60.0, nextBoundary.timeIntervalSince(now)))
+    }
+
+    private func scheduleNextCheck(using settings: Settings) {
+        timer?.invalidate()
+
+        let interval = nextCheckDelay(for: settings, now: Date())
+        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: false) { [weak self] _ in
+            self?.checkSchedule()
+        }
+
+        if let timer {
+            RunLoop.current.add(timer, forMode: .common)
+        }
     }
 }
