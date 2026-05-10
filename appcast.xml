@@ -11,21 +11,23 @@
             <sparkle:version>65</sparkle:version>
             <sparkle:shortVersionString>1.0.9</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
-            <sparkle:fullReleaseNotesLink>https://github.com/Talljack/screen-lock/releases/tag/v1.0.9</sparkle:fullReleaseNotesLink>
-            <description sparkle:format="markdown"><![CDATA[
-## ScreenLock v1.0.9
-
-### Highlights
-- Universal binary — runs natively on Intel (x86_64) and Apple Silicon (arm64) Macs
-- Signed with Developer ID and notarized by Apple — no Gatekeeper warnings
-
-### Changes
-See [changes since v1.0.8](https://github.com/Talljack/screen-lock/compare/v1.0.8...v1.0.9) for full details.
-
-### Install
-1. Download `ScreenLock.dmg` below
-2. Open the DMG and drag `ScreenLock.app` to `Applications`
-3. The app runs in the menu bar
+            <description sparkle:format="html"><![CDATA[
+<section>
+  <h1>ScreenLock v1.0.9</h1>
+  <h2>Highlights</h2>
+  <ul>
+    <li>Universal binary, running natively on Intel (x86_64) and Apple Silicon (arm64) Macs</li>
+    <li>Signed with Developer ID and notarized by Apple, without Gatekeeper warnings</li>
+  </ul>
+  <h2>Changes</h2>
+  <p>See <a href="https://github.com/Talljack/screen-lock/compare/v1.0.8...v1.0.9">changes since v1.0.8</a> for full details.</p>
+  <h2>Install</h2>
+  <ol>
+    <li>Download <code>ScreenLock.dmg</code>.</li>
+    <li>Open the DMG and drag <code>ScreenLock.app</code> to <code>Applications</code>.</li>
+    <li>Launch the app from the menu bar.</li>
+  </ol>
+</section>
             ]]></description>
             <enclosure url="https://github.com/Talljack/screen-lock/releases/download/v1.0.9/ScreenLock.dmg"
                        type="application/x-apple-diskimage"

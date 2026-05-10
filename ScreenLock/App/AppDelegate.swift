@@ -5,15 +5,106 @@ import os.log
 
 private let log = OSLog(subsystem: "com.yugangcao.screenlock", category: "App")
 
+final class UpdaterDriver: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverDelegate {
+    func standardUserDriverWillShowModalAlert() {
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func standardUserDriverShouldShowVersionHistory(for item: SUAppcastItem) -> Bool {
+        false
+    }
+
+    func standardUserDriverWillShowReleaseNotesText(
+        _ releaseNotesAttributedString: NSAttributedString,
+        forUpdate update: SUAppcastItem,
+        withBundleDisplayVersion bundleDisplayVersion: String,
+        bundleVersion: String
+    ) -> NSAttributedString? {
+        releaseNotesAttributedString
+    }
+
+    func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) {
+        os_log(
+            "Sparkle found update %{public}@ (%{public}@) from %{public}@",
+            log: log,
+            type: .info,
+            item.displayVersionString,
+            item.versionString,
+            item.fileURL?.absoluteString ?? "no file URL"
+        )
+    }
+
+    func updaterDidNotFindUpdate(_ updater: SPUUpdater) {
+        os_log("Sparkle did not find an update", log: log, type: .info)
+    }
+
+    func updater(_ updater: SPUUpdater, willDownloadUpdate item: SUAppcastItem, with request: NSMutableURLRequest) {
+        os_log(
+            "Sparkle will download update %{public}@ from %{public}@",
+            log: log,
+            type: .info,
+            item.displayVersionString,
+            request.url?.absoluteString ?? "unknown URL"
+        )
+    }
+
+    func updater(_ updater: SPUUpdater, didDownloadUpdate item: SUAppcastItem) {
+        os_log("Sparkle downloaded update %{public}@", log: log, type: .info, item.displayVersionString)
+    }
+
+    func updater(_ updater: SPUUpdater, failedToDownloadUpdate item: SUAppcastItem, error: Error) {
+        os_log(
+            "Sparkle failed to download update %{public}@ with error: %{public}@",
+            log: log,
+            type: .error,
+            item.displayVersionString,
+            error.localizedDescription
+        )
+    }
+
+    func updater(_ updater: SPUUpdater, willInstallUpdate item: SUAppcastItem) {
+        os_log("Sparkle will install update %{public}@", log: log, type: .info, item.displayVersionString)
+    }
+
+    func updater(_ updater: SPUUpdater, didFinishUpdateCycleFor updateCheck: SPUUpdateCheck, error: Error?) {
+        if let error {
+            os_log("Sparkle update cycle finished with error: %{public}@",
+                   log: log, type: .error, error.localizedDescription)
+        } else {
+            os_log("Sparkle update cycle finished successfully", log: log, type: .info)
+        }
+    }
+
+    func updater(_ updater: SPUUpdater, mayPerform updateCheck: SPUUpdateCheck) throws {
+        let bundleURL = Bundle.main.bundleURL.resolvingSymlinksInPath()
+        let path = bundleURL.path
+        let isInApplications = path.hasPrefix("/Applications/") || path.hasPrefix(NSHomeDirectory() + "/Applications/")
+        let isTemporaryOrTranslocated = path.hasPrefix("/private/var/folders/") || path.hasPrefix("/private/tmp/") || path.contains("/AppTranslocation/")
+
+        guard isInApplications, !isTemporaryOrTranslocated else {
+            let message = "请先将 ScreenLock.app 移动到 Applications 后再执行应用内更新。当前运行路径：\(path)"
+            os_log("%{public}@", log: log, type: .error, message)
+            throw NSError(
+                domain: "ScreenLock.Updater",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: message]
+            )
+        }
+    }
+}
+
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var menuBarController: MenuBarController?
+    private let updaterDriver: UpdaterDriver
     let updaterController: SPUStandardUpdaterController
 
     override init() {
+        let updaterDriver = UpdaterDriver()
+        self.updaterDriver = updaterDriver
         self.updaterController = SPUStandardUpdaterController(
             startingUpdater: false,
-            updaterDelegate: nil,
-            userDriverDelegate: nil
+            updaterDelegate: updaterDriver,
+            userDriverDelegate: updaterDriver
         )
         super.init()
     }

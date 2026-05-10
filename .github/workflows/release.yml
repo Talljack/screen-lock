@@ -262,8 +262,10 @@ jobs:
           if [ -n "$PREV_TAG" ]; then
             COMPARE_URL="https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${TAG}"
             COMPARE_LINE="See [changes since ${PREV_TAG}](${COMPARE_URL}) for full details."
+            COMPARE_HTML="<p>See <a href=\"${COMPARE_URL}\">changes since ${PREV_TAG}</a> for full details.</p>"
           else
             COMPARE_LINE="See [commit history](https://github.com/${{ github.repository }}/commits/${TAG})."
+            COMPARE_HTML="<p>See <a href=\"https://github.com/${{ github.repository }}/commits/${TAG}\">commit history</a>.</p>"
           fi
           cat > build/release_notes.md << NOTES_EOF
           ## ScreenLock ${TAG}
@@ -280,6 +282,24 @@ jobs:
           2. Open the DMG and drag \`ScreenLock.app\` to \`Applications\`
           3. The app runs in the menu bar
           NOTES_EOF
+          cat > build/release_notes.html << HTML_EOF
+          <section>
+            <h1>ScreenLock ${TAG}</h1>
+            <h2>Highlights</h2>
+            <ul>
+              <li>Universal binary, running natively on Intel (x86_64) and Apple Silicon (arm64) Macs</li>
+              <li>Signed with Developer ID and notarized by Apple, without Gatekeeper warnings</li>
+            </ul>
+            <h2>Changes</h2>
+            ${COMPARE_HTML}
+            <h2>Install</h2>
+            <ol>
+              <li>Download <code>ScreenLock.dmg</code>.</li>
+              <li>Open the DMG and drag <code>ScreenLock.app</code> to <code>Applications</code>.</li>
+              <li>Launch the app from the menu bar.</li>
+            </ol>
+          </section>
+          HTML_EOF
 
       - name: Generate appcast.xml
         run: |
@@ -291,7 +311,6 @@ jobs:
           DATE=$(date -u "+%a, %d %b %Y %H:%M:%S +0000")
           REPO="${{ github.repository }}"
           URL="https://github.com/${REPO}/releases/download/${TAG}/ScreenLock.dmg"
-          FULL_RELEASE_NOTES_URL="https://github.com/${REPO}/releases/tag/${TAG}"
           {
             printf '%s\n' '<?xml version="1.0" encoding="utf-8"?>'
             printf '%s\n' '<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">'
@@ -306,9 +325,8 @@ jobs:
             printf '%s\n' "            <sparkle:version>${BUILD}</sparkle:version>"
             printf '%s\n' "            <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>"
             printf '%s\n' '            <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>'
-            printf '%s\n' "            <sparkle:fullReleaseNotesLink>${FULL_RELEASE_NOTES_URL}</sparkle:fullReleaseNotesLink>"
-            printf '%s\n' '            <description sparkle:format="markdown"><![CDATA['
-            cat build/release_notes.md
+            printf '%s\n' '            <description sparkle:format="html"><![CDATA['
+            cat build/release_notes.html
             printf '%s\n' '            ]]></description>'
             printf '%s\n' "            <enclosure url=\"${URL}\""
             printf '%s\n' '                       type="application/x-apple-diskimage"'
