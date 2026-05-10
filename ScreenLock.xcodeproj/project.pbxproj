@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		033B758F45D2FB62744FBB8F /* SmartSoftnessTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0828E4F8FAA2437AFAC9F2E /* SmartSoftnessTests.swift */; };
+		0BE40DCE6CE1645D0F8DF6D7 /* AppcastConfigurationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E2A35AB5DB375BE79E9BA6E /* AppcastConfigurationTests.swift */; };
 		14B76CAED3D769A8A4CBCE42 /* SunCycleManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 211E71A93AD3CCD3F9676198 /* SunCycleManager.swift */; };
 		29EF30BA86C58F3AE0243529 /* LockScreenWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A24F9A95645E65F602029C92 /* LockScreenWindow.swift */; };
 		2E0FB9A08B403A60D865E523 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 224620A3ACCC748750DE9BD2 /* AppDelegate.swift */; };
@@ -46,6 +47,7 @@
 		02476C0E072F5C2F2FC7F28C /* ScreenLock.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ScreenLock.entitlements; sourceTree = "<group>"; };
 		05EF324173D20C4BFF15787A /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		068B22529AC910458AC5D566 /* ScreenLockTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ScreenLockTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		0E2A35AB5DB375BE79E9BA6E /* AppcastConfigurationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppcastConfigurationTests.swift; sourceTree = "<group>"; };
 		1F45485727769AB0BD1F5EE8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2097AB96028FD0E3FA332712 /* StatsWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsWindow.swift; sourceTree = "<group>"; };
 		211E71A93AD3CCD3F9676198 /* SunCycleManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunCycleManager.swift; sourceTree = "<group>"; };
@@ -101,6 +103,7 @@
 		45656C071B6EE30C56423AD5 /* ScreenLockTests */ = {
 			isa = PBXGroup;
 			children = (
+				0E2A35AB5DB375BE79E9BA6E /* AppcastConfigurationTests.swift */,
 				FBAF12575996FCCCD8B8B68E /* DisplaySleepTests.swift */,
 				9917DB5B67B56B45341266D3 /* ScheduleLogicTests.swift */,
 				EB7F16F0452494FC3C7FF95B /* SettingsDecodingTests.swift */,
@@ -284,6 +287,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0BE40DCE6CE1645D0F8DF6D7 /* AppcastConfigurationTests.swift in Sources */,
 				9EEFF3BB2B06E5225D920E3C /* DisplaySleepTests.swift in Sources */,
 				BCDB19EB89823C82FDD44655 /* ScheduleLogicTests.swift in Sources */,
 				6BEE89BB81EDA8BCCEC242CD /* SettingsDecodingTests.swift in Sources */,

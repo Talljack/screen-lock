@@ -1,4 +1,7 @@
 import Cocoa
+import CFNetwork
+import Darwin
+import Network
 import Sparkle
 import UserNotifications
 import os.log
@@ -6,6 +9,12 @@ import os.log
 private let log = OSLog(subsystem: "com.yugangcao.screenlock", category: "App")
 
 final class UpdaterDriver: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverDelegate {
+    private struct ProxyEndpoint {
+        let scheme: String
+        let host: String
+        let port: UInt16
+    }
+
     func standardUserDriverWillShowModalAlert() {
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -90,6 +99,100 @@ final class UpdaterDriver: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverDe
                 userInfo: [NSLocalizedDescriptionKey: message]
             )
         }
+
+        if let proxyMessage = unavailableLoopbackProxyMessage() {
+            os_log("%{public}@", log: log, type: .error, proxyMessage)
+            throw NSError(
+                domain: "ScreenLock.Updater",
+                code: 2,
+                userInfo: [NSLocalizedDescriptionKey: proxyMessage]
+            )
+        }
+    }
+
+    private func unavailableLoopbackProxyMessage() -> String? {
+        for endpoint in activeLoopbackProxyEndpoints() {
+            guard !isProxyReachable(endpoint) else { continue }
+
+            return "检测到系统\(endpoint.scheme.uppercased())代理 \(endpoint.host):\(endpoint.port) 当前不可连接。请先关闭该代理/VPN，或恢复本地代理服务后再执行应用内更新。"
+        }
+
+        return nil
+    }
+
+    private func activeLoopbackProxyEndpoints() -> [ProxyEndpoint] {
+        guard
+            let unmanagedSettings = CFNetworkCopySystemProxySettings(),
+            let settings = unmanagedSettings.takeRetainedValue() as? [String: Any]
+        else {
+            return []
+        }
+
+        let candidates: [(scheme: String, enabledKey: String, hostKey: String, portKey: String)] = [
+            (
+                "http",
+                kCFNetworkProxiesHTTPEnable as String,
+                kCFNetworkProxiesHTTPProxy as String,
+                kCFNetworkProxiesHTTPPort as String
+            ),
+            (
+                "https",
+                kCFNetworkProxiesHTTPSEnable as String,
+                kCFNetworkProxiesHTTPSProxy as String,
+                kCFNetworkProxiesHTTPSPort as String
+            ),
+        ]
+
+        return candidates.compactMap { candidate in
+            let enabled = (settings[candidate.enabledKey] as? NSNumber)?.boolValue ?? false
+            guard enabled else { return nil }
+
+            guard
+                let host = settings[candidate.hostKey] as? String,
+                let portNumber = settings[candidate.portKey] as? NSNumber
+            else {
+                return nil
+            }
+
+            let normalizedHost = host.lowercased()
+            let isLoopbackHost = normalizedHost == "127.0.0.1" || normalizedHost == "localhost" || normalizedHost == "::1"
+            guard isLoopbackHost else { return nil }
+
+            return ProxyEndpoint(
+                scheme: candidate.scheme,
+                host: host,
+                port: portNumber.uint16Value
+            )
+        }
+    }
+
+    private func isProxyReachable(_ endpoint: ProxyEndpoint) -> Bool {
+        let port = NWEndpoint.Port(rawValue: endpoint.port)
+        guard let port else { return false }
+
+        let connection = NWConnection(host: NWEndpoint.Host(endpoint.host), port: port, using: .tcp)
+        let semaphore = DispatchSemaphore(value: 0)
+        let stateQueue = DispatchQueue(label: "com.yugangcao.screenlock.proxy-preflight")
+        var reachable = false
+
+        connection.stateUpdateHandler = { state in
+            switch state {
+            case .ready:
+                reachable = true
+                connection.cancel()
+                semaphore.signal()
+            case .failed, .cancelled:
+                semaphore.signal()
+            default:
+                break
+            }
+        }
+
+        connection.start(queue: stateQueue)
+        let _ = semaphore.wait(timeout: .now() + .milliseconds(800))
+        connection.cancel()
+
+        return reachable
     }
 }
 
