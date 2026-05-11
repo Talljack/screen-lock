@@ -15,7 +15,13 @@ final class UpdaterDriver: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverDe
         let port: UInt16
     }
 
+    var focusUpdateWindow: (() -> Void)?
+
     func standardUserDriverWillShowModalAlert() {
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func standardUserDriverDidShowModalAlert() {
         NSApp.activate(ignoringOtherApps: true)
     }
 
@@ -30,6 +36,19 @@ final class UpdaterDriver: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverDe
         bundleVersion: String
     ) -> NSAttributedString? {
         releaseNotesAttributedString
+    }
+
+    func standardUserDriverWillHandleShowingUpdate(
+        _ handleShowingUpdate: Bool,
+        forUpdate update: SUAppcastItem,
+        state: SPUUserUpdateState
+    ) {
+        guard handleShowingUpdate else { return }
+
+        DispatchQueue.main.async { [focusUpdateWindow] in
+            NSApp.activate(ignoringOtherApps: true)
+            focusUpdateWindow?()
+        }
     }
 
     func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) {
@@ -210,6 +229,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             userDriverDelegate: updaterDriver
         )
         super.init()
+        updaterDriver.focusUpdateWindow = { [weak updaterController] in
+            updaterController?.userDriver.showUpdateInFocus()
+        }
     }
 
     func applicationWillFinishLaunching(_ notification: Notification) {}
