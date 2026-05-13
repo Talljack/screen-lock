@@ -122,6 +122,8 @@ class LockScreenWindow: NSWindow {
     private var countdownLabel: NSTextField?
     private var cardView: NSVisualEffectView?
     private var allowClose = false
+    private var keepOnTopTimer: Timer?
+    private var resignKeyObserver: NSObjectProtocol?
 
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
@@ -139,6 +141,7 @@ class LockScreenWindow: NSWindow {
 
         setFrame(screen.frame, display: false)
         alphaValue = 0
+        isReleasedWhenClosed = false
         setupWindow()
         setupUI(remainingSeconds: remainingSeconds)
     }
@@ -163,11 +166,14 @@ class LockScreenWindow: NSWindow {
             card.add(spring, forKey: "cardEntrance")
             card.transform = CATransform3DIdentity
         }
+
+        startKeepOnTopProtection()
     }
 
     func showImmediately() {
         alphaValue = 1
         reinforceFrontmost()
+        startKeepOnTopProtection()
     }
 
     func reinforceFrontmost() {
@@ -177,12 +183,13 @@ class LockScreenWindow: NSWindow {
     }
 
     private func setupWindow() {
-        level = .screenSaver
+        level = NSWindow.Level(rawValue: Int(CGShieldingWindowLevel()))
         collectionBehavior = [
             .canJoinAllSpaces,
             .fullScreenAuxiliary,
             .stationary,
-            .ignoresCycle
+            .ignoresCycle,
+            .transient
         ]
         isOpaque = true
         backgroundColor = .black
@@ -198,6 +205,34 @@ class LockScreenWindow: NSWindow {
 
         // Prevent window from being hidden by gestures
         hidesOnDeactivate = false
+    }
+
+    private func startKeepOnTopProtection() {
+        if resignKeyObserver == nil {
+            resignKeyObserver = NotificationCenter.default.addObserver(
+                forName: NSWindow.didResignKeyNotification,
+                object: self,
+                queue: .main
+            ) { [weak self] _ in
+                self?.reinforceFrontmost()
+            }
+        }
+
+        guard keepOnTopTimer == nil else { return }
+        keepOnTopTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            guard let self, !self.allowClose else { return }
+            self.orderFrontRegardless()
+        }
+    }
+
+    private func stopKeepOnTopProtection() {
+        keepOnTopTimer?.invalidate()
+        keepOnTopTimer = nil
+
+        if let resignKeyObserver {
+            NotificationCenter.default.removeObserver(resignKeyObserver)
+            self.resignKeyObserver = nil
+        }
     }
 
     private func setupUI(remainingSeconds: Int) {
@@ -309,10 +344,12 @@ class LockScreenWindow: NSWindow {
 
     func allowDismiss() {
         allowClose = true
+        stopKeepOnTopProtection()
     }
 
     func dismissForSystemLock() {
         allowClose = true
+        stopKeepOnTopProtection()
         orderOut(nil)
     }
 
@@ -321,7 +358,12 @@ class LockScreenWindow: NSWindow {
             NSSound.beep()
             return
         }
+        stopKeepOnTopProtection()
         super.close()
+    }
+
+    deinit {
+        stopKeepOnTopProtection()
     }
 
     override func keyDown(with event: NSEvent) {

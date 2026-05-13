@@ -48,18 +48,18 @@ class ScheduleManager {
 
         let now = Date()
 
-        guard let todayLock = todayOccurrence(of: settings.lockTime, relativeTo: now) else {
+        guard let nextOccurrence = nextOccurrence(for: settings, relativeTo: now) else {
             os_log("Invalid lock time format", log: log, type: .error)
             return
         }
 
-        let warningStart = todayLock.addingTimeInterval(-Double(settings.warningMinutes) * 60)
+        let warningStart = nextOccurrence.lockTime.addingTimeInterval(-Double(settings.warningMinutes) * 60)
 
         // Grace window: within 5 minutes after lock time, still trigger lock.
-        let graceEnd = todayLock.addingTimeInterval(graceWindowSeconds)
+        let graceEnd = nextOccurrence.lockTime.addingTimeInterval(graceWindowSeconds)
 
-        if now >= todayLock && now < graceEnd {
-            if ScreenManager.shared.didSleepThrough(todayLock, now: now) {
+        if now >= nextOccurrence.lockTime && now < graceEnd {
+            if ScreenManager.shared.didSleepThrough(nextOccurrence.lockTime, now: now) {
                 os_log("Skipping scheduled lock because the system slept through the lock time", log: log, type: .info)
                 if state != .normal {
                     transitionToNormal()
@@ -69,9 +69,9 @@ class ScheduleManager {
             }
 
             if state != .locked {
-                transitionToLocked(trigger: .scheduled)
+                transitionToLocked(trigger: .scheduled, lockTime: nextOccurrence.sourceTime)
             }
-        } else if now >= warningStart && now < todayLock {
+        } else if now >= warningStart && now < nextOccurrence.lockTime {
             let totalWarningInterval = max(Double(settings.warningMinutes) * 60, 1)
             let warningProgress = Float(now.timeIntervalSince(warningStart) / totalWarningInterval)
 
@@ -91,6 +91,11 @@ class ScheduleManager {
                 ScreenManager.shared.clearManualSoftnessPreviewIfNeeded()
             }
         }
+    }
+
+    private struct NextOccurrence {
+        let lockTime: Date
+        let sourceTime: String
     }
 
     /// Returns today's occurrence of `timeString` (HH:mm) regardless of whether
@@ -125,14 +130,20 @@ class ScheduleManager {
         return target
     }
 
-    /// Used for countdown display — always returns a future lock time.
-    private func nextLockTime(for settings: Settings, now: Date) -> Date? {
-        guard let today = todayOccurrence(of: settings.lockTime, relativeTo: now) else { return nil }
-        let graceEnd = today.addingTimeInterval(graceWindowSeconds)
-        if now >= graceEnd {
-            return Calendar.current.date(byAdding: .day, value: 1, to: today)
+    private func occurrences(for settings: Settings, now: Date) -> [(time: String, date: Date)] {
+        settings.normalizedLockTimes.compactMap { time in
+            guard let today = todayOccurrence(of: time, relativeTo: now) else { return nil }
+            let graceEnd = today.addingTimeInterval(graceWindowSeconds)
+            let lockDate = now >= graceEnd ? Calendar.current.date(byAdding: .day, value: 1, to: today) ?? today : today
+            return (time: time, date: lockDate)
         }
-        return today
+    }
+
+    /// Used for countdown display — always returns a future lock time.
+    private func nextOccurrence(for settings: Settings, relativeTo now: Date) -> NextOccurrence? {
+        let options = occurrences(for: settings, now: now)
+        guard let next = options.min(by: { $0.date < $1.date }) else { return nil }
+        return NextOccurrence(lockTime: next.date, sourceTime: next.time)
     }
 
     private func transitionToNormal() {
@@ -167,7 +178,7 @@ class ScheduleManager {
         }
     }
 
-    private func transitionToLocked(trigger: LockEvent.Trigger) {
+    private func transitionToLocked(trigger: LockEvent.Trigger, lockTime: String? = nil) {
         // Skip lock if displays are already asleep
         if ScreenManager.shared.areDisplaysAsleep() {
             os_log("Displays already asleep, skipping lock", log: log, type: .info)
@@ -177,7 +188,7 @@ class ScheduleManager {
 
         state = .locked
         os_log("State -> Locked", log: log, type: .info)
-        ScreenManager.shared.lockScreenAndTurnOffDisplay(trigger: trigger) { [weak self] in
+        ScreenManager.shared.lockScreenAndTurnOffDisplay(trigger: trigger, lockTime: lockTime) { [weak self] in
             DispatchQueue.main.async {
                 self?.transitionToNormal()
             }
@@ -193,11 +204,11 @@ class ScheduleManager {
         }
 
         let now = Date()
-        guard let lockTime = nextLockTime(for: settings, now: now) else {
+        guard let lockTime = nextOccurrence(for: settings, relativeTo: now) else {
             return L("schedule.format_error")
         }
 
-        let interval = lockTime.timeIntervalSince(now)
+        let interval = lockTime.lockTime.timeIntervalSince(now)
         if interval < 0 {
             return L("schedule.past_time")
         }
@@ -218,12 +229,12 @@ class ScheduleManager {
 
     func nextCheckDelay(for settings: Settings, now: Date) -> TimeInterval {
         guard settings.lockEnabled else { return 60.0 }
-        guard let todayLock = todayOccurrence(of: settings.lockTime, relativeTo: now) else {
+        guard let next = nextOccurrence(for: settings, relativeTo: now) else {
             return 60.0
         }
 
-        let warningStart = todayLock.addingTimeInterval(-Double(settings.warningMinutes) * 60)
-        let graceEnd = todayLock.addingTimeInterval(graceWindowSeconds)
+        let warningStart = next.lockTime.addingTimeInterval(-Double(settings.warningMinutes) * 60)
+        let graceEnd = next.lockTime.addingTimeInterval(graceWindowSeconds)
 
         if now < warningStart {
             return max(1.0, min(60.0, warningStart.timeIntervalSince(now)))
@@ -233,12 +244,12 @@ class ScheduleManager {
             return 1.0
         }
 
-        guard let nextLock = nextLockTime(for: settings, now: now) else {
+        guard let nextLock = nextOccurrence(for: settings, relativeTo: now) else {
             return 60.0
         }
 
-        let nextWarningStart = nextLock.addingTimeInterval(-Double(settings.warningMinutes) * 60)
-        let nextBoundary = min(nextWarningStart, nextLock)
+        let nextWarningStart = nextLock.lockTime.addingTimeInterval(-Double(settings.warningMinutes) * 60)
+        let nextBoundary = min(nextWarningStart, nextLock.lockTime)
         return max(1.0, min(60.0, nextBoundary.timeIntervalSince(now)))
     }
 
