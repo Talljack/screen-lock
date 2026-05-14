@@ -21,7 +21,8 @@ class MenuBarController {
     private var lockEnabledItem: NSMenuItem?
     private var lockTimeParentItem: NSMenuItem?
     private var lockTimeMenuItems: [NSMenuItem] = []
-    private var customLockTimeItem: NSMenuItem?
+    private var manageLockTimeItem: NSMenuItem?
+    private var lockTimeEditor: LockTimeEditorWindowController?
     private var warningParentItem: NSMenuItem?
     private var warningMenuItems: [NSMenuItem] = []
     private var softnessParentItem: NSMenuItem?
@@ -201,17 +202,24 @@ class MenuBarController {
 
     private func buildLockTimeSubmenu() -> NSMenu {
         let sub = NSMenu()
-        for time in ["22:00", "23:00", "00:00", "01:00", "02:00"] {
-            let item = NSMenuItem(title: time, action: #selector(lockTimeSelected(_:)), keyEquivalent: "")
+        lockTimeMenuItems.removeAll()
+        let times = SettingsManager.shared.settings.validated().normalizedLockTimes
+        if times.isEmpty {
+            let item = NSMenuItem(title: L("menu.lock_time.empty"), action: nil, keyEquivalent: "")
+            item.isEnabled = false
+            sub.addItem(item)
+        }
+        for time in times {
+            let item = NSMenuItem(title: time, action: #selector(toggleLockTimeSelected(_:)), keyEquivalent: "")
             item.target = self
             item.representedObject = time
             lockTimeMenuItems.append(item)
             sub.addItem(item)
         }
         sub.addItem(.separator())
-        customLockTimeItem = NSMenuItem(title: L("menu.custom_time"), action: #selector(customLockTimeSelected(_:)), keyEquivalent: "")
-        customLockTimeItem?.target = self
-        sub.addItem(customLockTimeItem!)
+        manageLockTimeItem = NSMenuItem(title: L("menu.manage_lock_times"), action: #selector(editLockTimes(_:)), keyEquivalent: "")
+        manageLockTimeItem?.target = self
+        sub.addItem(manageLockTimeItem!)
         return sub
     }
 
@@ -342,7 +350,7 @@ class MenuBarController {
         apiStatusItem = nil
         lockEnabledItem = nil
         lockTimeParentItem = nil
-        customLockTimeItem = nil
+        manageLockTimeItem = nil
         warningParentItem = nil
         softnessParentItem = nil
         smartPreferenceValueItem = nil
@@ -458,7 +466,7 @@ class MenuBarController {
         warningParentItem?.isEnabled = enabled
         breakParentItem?.isEnabled = enabled
         setMenuItems(lockTimeMenuItems, enabled: enabled)
-        customLockTimeItem?.isEnabled = enabled
+        manageLockTimeItem?.isEnabled = enabled
         setMenuItems(warningMenuItems, enabled: enabled)
         setMenuItems(breakDurationMenuItems, enabled: enabled)
         customBreakDurationItem?.isEnabled = enabled
@@ -473,7 +481,18 @@ class MenuBarController {
         smartPreferenceSliderItem?.isHidden = !smartModeEnabled
 
         // Parent item titles show current values
-        lockTimeParentItem?.title = L("menu.lock_time.value", settings.lockTime)
+        let lockTimes = settings.normalizedLockTimes
+        let lockSummary: String
+        if lockTimes.count <= 1 {
+            lockSummary = L("menu.lock_time.value", lockTimes.first ?? settings.lockTime)
+        } else {
+            lockSummary = L(
+                "menu.lock_time.value.multiple",
+                lockTimes.first ?? settings.lockTime,
+                max(lockTimes.count - 1, 1)
+            )
+        }
+        lockTimeParentItem?.title = lockSummary
         warningParentItem?.title = L("menu.warning.value", settings.warningMinutes)
         let softnessTitle = settings.warningSoftnessLevel == .smart
             ? L("menu.softness.smart_value", settings.warningSoftnessLevel.displayName, smartPreferenceSummary(for: settings.smartSoftnessBias))
@@ -481,16 +500,7 @@ class MenuBarController {
         softnessParentItem?.title = softnessTitle
         breakParentItem?.title = L("menu.break.value", settings.forcedBreakMinutes)
 
-        // Lock time submenu checks
-        let presetTimes = ["22:00", "23:00", "00:00", "01:00", "02:00"]
-        let isCustomTime = !presetTimes.contains(settings.lockTime)
-        for item in lockTimeMenuItems {
-            if let time = item.representedObject as? String {
-                item.state = (time == settings.lockTime) ? .on : .off
-            }
-        }
-        customLockTimeItem?.state = isCustomTime ? .on : .off
-        customLockTimeItem?.title = isCustomTime ? L("menu.custom_time.value", settings.lockTime) : L("menu.custom_time")
+        lockTimeParentItem?.submenu = buildLockTimeSubmenu()
 
         // Warning submenu checks
         for item in warningMenuItems {
@@ -697,9 +707,16 @@ class MenuBarController {
         return value > 0 ? value : nil
     }
 
-    @objc private func lockTimeSelected(_ sender: NSMenuItem) {
+    @objc private func toggleLockTimeSelected(_ sender: NSMenuItem) {
         guard let time = sender.representedObject as? String else { return }
-        SettingsManager.shared.updateLockTime(time)
+        let settings = SettingsManager.shared.settings.validated()
+        var times = settings.normalizedLockTimes
+        if let index = times.firstIndex(of: time) {
+            times.remove(at: index)
+        } else {
+            times.append(time)
+        }
+        SettingsManager.shared.updateLockTimes(times.isEmpty ? Settings.default.lockTimes : times)
         updateUI()
         performFeedback()
     }
@@ -1152,35 +1169,48 @@ class MenuBarController {
         performFeedback()
     }
 
-    @objc private func customLockTimeSelected(_ sender: NSMenuItem) {
-        let alert = NSAlert()
-        alert.messageText = L("custom_time.title")
-        alert.informativeText = L("custom_time.message")
-        alert.addButton(withTitle: L("button.save"))
-        alert.addButton(withTitle: L("button.cancel"))
-
-        let field = NSTextField(string: SettingsManager.shared.settings.lockTime)
-        field.placeholderString = "HH:mm"
-        field.frame = NSRect(x: 0, y: 0, width: 220, height: 24)
-        alert.accessoryView = field
-
-        NSApp.activate(ignoringOtherApps: true)
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
-
-        let input = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        let parts = input.split(separator: ":").compactMap { Int($0) }
-        guard parts.count == 2, (0...23).contains(parts[0]), (0...59).contains(parts[1]) else {
-            let err = NSAlert()
-            err.messageText = L("custom_time.error.title")
-            err.informativeText = L("custom_time.error.message")
-            err.runModal()
-            return
+    @objc private func editLockTimes(_ sender: NSMenuItem) {
+        let currentTimes = SettingsManager.shared.settings.validated().normalizedLockTimes
+        lockTimeEditor?.close()
+        let editor = LockTimeEditorWindowController(times: currentTimes) { [weak self] times in
+            SettingsManager.shared.updateLockTimes(times)
+            self?.updateUI()
+            self?.performFeedback()
         }
+        lockTimeEditor = editor
+        editor.showWindow(nil)
+        editor.present()
+    }
 
-        let formatted = String(format: "%02d:%02d", parts[0], parts[1])
-        SettingsManager.shared.updateLockTime(formatted)
-        updateUI()
-        performFeedback()
+    func presentLockTimeEditorForDebug(
+        openPicker: Bool = false,
+        exportSnapshotPath: String? = nil,
+        exportPickerSnapshotPath: String? = nil
+    ) {
+        let currentTimes = SettingsManager.shared.settings.validated().normalizedLockTimes
+        lockTimeEditor?.close()
+        let editor = LockTimeEditorWindowController(times: currentTimes) { [weak self] times in
+            SettingsManager.shared.updateLockTimes(times)
+            self?.updateUI()
+            self?.performFeedback()
+        }
+        lockTimeEditor = editor
+        editor.showWindow(nil)
+        if openPicker {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                editor.debugOpenTimePicker()
+            }
+        }
+        if let exportSnapshotPath {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
+                editor.debugExportSnapshot(to: URL(fileURLWithPath: exportSnapshotPath))
+            }
+        }
+        if let exportPickerSnapshotPath {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) {
+                editor.debugExportTimePickerSnapshot(to: URL(fileURLWithPath: exportPickerSnapshotPath))
+            }
+        }
     }
 
     @objc private func lockNow(_ sender: NSMenuItem) {

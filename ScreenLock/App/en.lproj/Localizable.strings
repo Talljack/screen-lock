@@ -7,6 +7,7 @@
 "menu.lock_toggle" = "Scheduled Lock";
 "menu.lock_now" = "Lock Now (⌥⌘L)";
 "menu.lock_time" = "Lock Time";
+"menu.lock_time.empty" = "No lock times set";
 "menu.warning" = "Early Warning";
 "menu.softness" = "Screen Softness";
 "menu.break_duration" = "Break Duration";
@@ -22,6 +23,7 @@
 
 /* Menu - Current Values */
 "menu.lock_time.value" = "Lock Time: %@";
+"menu.lock_time.value.multiple" = "Lock Time: %@ (+%d more)";
 "menu.warning.value" = "Warning: %d min";
 "menu.softness.value" = "Screen Softness: %@";
 "menu.softness.smart_value" = "Screen Softness: %@ · %@";
@@ -30,8 +32,10 @@
 "menu.softness.preference.summary" = "%d%%";
 "menu.break.value" = "Break: %d min";
 "menu.appearance.value" = "Appearance: %@";
-"menu.custom_time" = "Custom Time...";
-"menu.custom_time.value" = "Custom Time (%@)";
+"menu.manage_lock_times" = "Manage Lock Times...";
+"menu.add_lock_time" = "Add Time";
+"menu.update_lock_time" = "Update Selected";
+"menu.remove_lock_time" = "Remove";
 "menu.custom" = "Custom...";
 "menu.custom.value" = "Custom (%d min)";
 
@@ -84,18 +88,43 @@
 "copy_editor.field.subtitle" = "Subtitle";
 "copy_editor.field.subtitle_placeholder" = "e.g., Early to bed, early to rise";
 "copy_editor.field.footer" = "Footer";
-"copy_editor.field.footer_placeholder" = "e.g., System lock screen will activate after break";
+"copy_editor.field.footer_placeholder" = "e.g., You can continue after the break ends";
 "copy_editor.preview" = "Preview";
 
 /* Lock Screen Preview */
 "preview.title" = "Lock Screen Preview — %@";
 
-/* Custom Time Input */
-"custom_time.title" = "Custom Lock Time";
-"custom_time.message" = "Enter time in 24h format: HH:mm (e.g. 23:30)";
-"custom_time.error.title" = "Invalid Time Format";
-"custom_time.error.message" = "Please enter a valid HH:mm format, e.g. 23:30";
-"custom_time.placeholder" = "Enter minutes";
+/* Lock Time Editor */
+"lock_time_editor.title" = "Manage Lock Times";
+"lock_time_editor.header.eyebrow" = "DAILY SCHEDULE";
+"lock_time_editor.message" = "Pick one or more times for the app to lock the screen every day.";
+"lock_time_editor.column" = "Time";
+"lock_time_editor.picker" = "Selected Time";
+"lock_time_editor.hour" = "Hour";
+"lock_time_editor.minute" = "Minute";
+"lock_time_editor.empty" = "No schedule yet.\nAdd a time to start the routine.";
+"lock_time_editor.list_title" = "Saved times";
+"lock_time_editor.editor_meta" = "TIME INSPECTOR";
+"lock_time_editor.editor_title" = "Edit time";
+"lock_time_editor.list_hint" = "Double-click or press Return to edit. Delete removes the selected time.";
+"lock_time_editor.helper" = "Use the picker to choose a time, then add it to the list.";
+"lock_time_editor.helper.single" = "Press Return or double-click to update the selected time.";
+"lock_time_editor.helper.multi" = "Delete works on multiple selection. Update only applies to one time at a time.";
+"lock_time_editor.list_count.one" = "1 saved";
+"lock_time_editor.list_count.many" = "%d saved";
+"lock_time_editor.summary" = "%d times";
+"lock_time_editor.preview.badge" = "NEXT LOCK";
+"lock_time_editor.preview.chip" = "Tonight routine";
+"lock_time_editor.preview.caption" = "This is how the next schedule slot will be saved.";
+"lock_time_editor.preview.card_title" = "Routine note";
+"lock_time_editor.preview.card_value" = "A softer end-of-day cue for your next screen break.";
+"lock_time_editor.preview.selection" = "Editing the saved slot at %@.";
+"lock_time_editor.cell.badge" = "DAILY";
+"lock_time_editor.selected.empty" = "No time selected";
+"lock_time_editor.selected.value" = "Selected: %@";
+"lock_time_editor.selected.multiple" = "%d selected";
+"lock_time_editor.error.title" = "Need At Least One Time";
+"lock_time_editor.error.message" = "Keep at least one lock time set.";
 
 /* Custom Warning */
 "custom_warning.title" = "Custom Warning Time";
@@ -206,13 +235,13 @@
 
 /* Status Messages */
 "status.screen_unavailable" = "Screen control unavailable";
-"status.lock_unavailable" = "System lock unavailable";
+"status.lock_unavailable" = "Lock unavailable";
 "status.sleep_unavailable" = "Lid close sleep prevention unavailable";
 
 /* Lock Screen Copy Sets - Peach Theme */
 "copy.peach.1.title" = "Time to Sleep~";
 "copy.peach.1.subtitle" = "You worked hard today, get some rest!";
-"copy.peach.1.footer" = "System lock screen activates after break 🔒";
+"copy.peach.1.footer" = "You can continue once the break ends 🔒";
 "copy.peach.2.title" = "Good Night 🌙";
 "copy.peach.2.subtitle" = "It's late, give your eyes a rest~";
 "copy.peach.2.footer" = "Early to bed, tomorrow will be better!";
@@ -226,7 +255,7 @@
 /* Lock Screen Copy Sets - Cloud Theme */
 "copy.cloud.1.title" = "Clouds Say Goodnight~";
 "copy.cloud.1.subtitle" = "Fluffy clouds are ready, come lie down!";
-"copy.cloud.1.footer" = "System lock screen activates after break 🔒";
+"copy.cloud.1.footer" = "You can continue once the break ends 🔒";
 "copy.cloud.2.title" = "Time for a Break";
 "copy.cloud.2.subtitle" = "Let your mind float on clouds and relax~";
 "copy.cloud.2.footer" = "Good sleep is the best skincare!";
@@ -240,7 +269,7 @@
 /* Lock Screen Copy Sets - Starlight Theme */
 "copy.star.1.title" = "Stars Guard Your Night ✨";
 "copy.star.1.subtitle" = "The galaxy has dimmed, time for you to rest~";
-"copy.star.1.footer" = "System lock screen activates after break 🔒";
+"copy.star.1.footer" = "You can continue once the break ends 🔒";
 "copy.star.2.title" = "The Moon Has Risen";
 "copy.star.2.subtitle" = "The brightest star awaits your dreams~";
 "copy.star.2.footer" = "Sleep well, shine again tomorrow!";

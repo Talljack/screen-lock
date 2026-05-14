@@ -43,7 +43,11 @@ class SettingsManager {
     }
 
     func updateLockTime(_ time: String) {
-        settings.lockTime = time
+        updateLockTimes([time])
+    }
+
+    func updateLockTimes(_ times: [String]) {
+        settings.lockTimes = times
         save()
     }
 

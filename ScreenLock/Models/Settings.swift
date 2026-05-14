@@ -216,7 +216,7 @@ struct LockScreenAppearance: Codable, Equatable {
 }
 
 struct Settings: Codable {
-    var lockTime: String
+    var lockTimes: [String]
     var warningMinutes: Int
     var warningSoftnessLevel: WarningSoftnessLevel
     var smartSoftnessBias: Double
@@ -229,7 +229,7 @@ struct Settings: Codable {
     var language: AppLanguage
 
     static let `default` = Settings(
-        lockTime: "00:00",
+        lockTimes: ["00:00"],
         warningMinutes: 30,
         warningSoftnessLevel: .smart,
         smartSoftnessBias: 0.5,
@@ -243,13 +243,13 @@ struct Settings: Codable {
     )
 
     enum CodingKeys: String, CodingKey {
-        case lockTime, warningMinutes, warningSoftnessLevel, smartSoftnessBias, smartSoftnessPreference, preventSleepEnabled, lockEnabled
+        case lockTimes, lockTime, warningMinutes, warningSoftnessLevel, smartSoftnessBias, smartSoftnessPreference, preventSleepEnabled, lockEnabled
         case forcedBreakMinutes, appearance, autoStartEnabled, hasShownPermissionGuide
         case language
     }
 
     init(
-        lockTime: String,
+        lockTimes: [String],
         warningMinutes: Int,
         warningSoftnessLevel: WarningSoftnessLevel,
         smartSoftnessBias: Double,
@@ -261,7 +261,7 @@ struct Settings: Codable {
         hasShownPermissionGuide: Bool = false,
         language: AppLanguage = .auto
     ) {
-        self.lockTime = lockTime
+        self.lockTimes = lockTimes
         self.warningMinutes = warningMinutes
         self.warningSoftnessLevel = warningSoftnessLevel
         self.smartSoftnessBias = smartSoftnessBias
@@ -274,10 +274,25 @@ struct Settings: Codable {
         self.language = language
     }
 
+    var lockTime: String {
+        get { lockTimes.first ?? Self.default.lockTimes.first ?? "00:00" }
+        set { lockTimes = [newValue] }
+    }
+
+    var normalizedLockTimes: [String] {
+        Self.normalizeLockTimes(lockTimes)
+    }
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        self.lockTime = try container.decodeIfPresent(String.self, forKey: .lockTime) ?? Self.default.lockTime
+        if let decodedLockTimes = try container.decodeIfPresent([String].self, forKey: .lockTimes) {
+            self.lockTimes = decodedLockTimes
+        } else if let decodedLockTime = try container.decodeIfPresent(String.self, forKey: .lockTime) {
+            self.lockTimes = [decodedLockTime]
+        } else {
+            self.lockTimes = Self.default.lockTimes
+        }
         self.warningMinutes = try container.decodeIfPresent(Int.self, forKey: .warningMinutes)
             ?? Self.default.warningMinutes
         self.warningSoftnessLevel = try container.decodeIfPresent(WarningSoftnessLevel.self, forKey: .warningSoftnessLevel)
@@ -304,7 +319,10 @@ struct Settings: Codable {
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
 
-        try container.encode(lockTime, forKey: .lockTime)
+        try container.encode(lockTimes, forKey: .lockTimes)
+        if let first = lockTimes.first {
+            try container.encode(first, forKey: .lockTime)
+        }
         try container.encode(warningMinutes, forKey: .warningMinutes)
         try container.encode(warningSoftnessLevel, forKey: .warningSoftnessLevel)
         try container.encode(smartSoftnessBias, forKey: .smartSoftnessBias)
@@ -318,8 +336,9 @@ struct Settings: Codable {
     }
 
     func validated() -> Settings {
-        Settings(
-            lockTime: lockTime,
+        let normalizedTimes = Self.normalizeLockTimes(lockTimes)
+        return Settings(
+            lockTimes: normalizedTimes.isEmpty ? Self.default.lockTimes : normalizedTimes,
             warningMinutes: max(1, warningMinutes),
             warningSoftnessLevel: warningSoftnessLevel,
             smartSoftnessBias: min(max(smartSoftnessBias, 0.0), 1.0),
@@ -331,5 +350,28 @@ struct Settings: Codable {
             hasShownPermissionGuide: hasShownPermissionGuide,
             language: language
         )
+    }
+
+    static func normalizeLockTimes(_ times: [String]) -> [String] {
+        let cleaned = times.compactMap { normalizeLockTime($0) }
+        guard !cleaned.isEmpty else { return [] }
+
+        var seen = Set<String>()
+        let unique = cleaned.filter { seen.insert($0).inserted }
+        return unique.sorted { minutesSinceMidnight($0) < minutesSinceMidnight($1) }
+    }
+
+    static func normalizeLockTime(_ time: String) -> String? {
+        let parts = time.split(separator: ":").compactMap { Int($0) }
+        guard parts.count == 2,
+              (0...23).contains(parts[0]),
+              (0...59).contains(parts[1]) else { return nil }
+        return String(format: "%02d:%02d", parts[0], parts[1])
+    }
+
+    static func minutesSinceMidnight(_ time: String) -> Int {
+        let parts = time.split(separator: ":").compactMap { Int($0) }
+        guard parts.count == 2 else { return 0 }
+        return parts[0] * 60 + parts[1]
     }
 }
