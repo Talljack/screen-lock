@@ -1196,6 +1196,7 @@ class MenuBarController {
         }
         lockTimeEditor = editor
         editor.showWindow(nil)
+        #if DEBUG
         if openPicker {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                 editor.debugOpenTimePicker()
@@ -1211,6 +1212,7 @@ class MenuBarController {
                 editor.debugExportTimePickerSnapshot(to: URL(fileURLWithPath: exportPickerSnapshotPath))
             }
         }
+        #endif
     }
 
     @objc private func lockNow(_ sender: NSMenuItem) {
