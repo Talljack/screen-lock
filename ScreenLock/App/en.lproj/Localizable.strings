@@ -96,11 +96,33 @@
 
 /* Lock Time Editor */
 "lock_time_editor.title" = "Manage Lock Times";
+"lock_time_editor.header.eyebrow" = "DAILY SCHEDULE";
 "lock_time_editor.message" = "Pick one or more times for the app to lock the screen every day.";
 "lock_time_editor.column" = "Time";
 "lock_time_editor.picker" = "Selected Time";
 "lock_time_editor.hour" = "Hour";
 "lock_time_editor.minute" = "Minute";
+"lock_time_editor.empty" = "No schedule yet.\nAdd a time to start the routine.";
+"lock_time_editor.list_title" = "Saved times";
+"lock_time_editor.editor_meta" = "TIME INSPECTOR";
+"lock_time_editor.editor_title" = "Edit time";
+"lock_time_editor.list_hint" = "Double-click or press Return to edit. Delete removes the selected time.";
+"lock_time_editor.helper" = "Use the picker to choose a time, then add it to the list.";
+"lock_time_editor.helper.single" = "Press Return or double-click to update the selected time.";
+"lock_time_editor.helper.multi" = "Delete works on multiple selection. Update only applies to one time at a time.";
+"lock_time_editor.list_count.one" = "1 saved";
+"lock_time_editor.list_count.many" = "%d saved";
+"lock_time_editor.summary" = "%d times";
+"lock_time_editor.preview.badge" = "NEXT LOCK";
+"lock_time_editor.preview.chip" = "Tonight routine";
+"lock_time_editor.preview.caption" = "This is how the next schedule slot will be saved.";
+"lock_time_editor.preview.card_title" = "Routine note";
+"lock_time_editor.preview.card_value" = "A softer end-of-day cue for your next screen break.";
+"lock_time_editor.preview.selection" = "Editing the saved slot at %@.";
+"lock_time_editor.cell.badge" = "DAILY";
+"lock_time_editor.selected.empty" = "No time selected";
+"lock_time_editor.selected.value" = "Selected: %@";
+"lock_time_editor.selected.multiple" = "%d selected";
 "lock_time_editor.error.title" = "Need At Least One Time";
 "lock_time_editor.error.message" = "Keep at least one lock time set.";
 

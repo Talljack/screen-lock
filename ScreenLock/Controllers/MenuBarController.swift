@@ -1182,6 +1182,37 @@ class MenuBarController {
         editor.present()
     }
 
+    func presentLockTimeEditorForDebug(
+        openPicker: Bool = false,
+        exportSnapshotPath: String? = nil,
+        exportPickerSnapshotPath: String? = nil
+    ) {
+        let currentTimes = SettingsManager.shared.settings.validated().normalizedLockTimes
+        lockTimeEditor?.close()
+        let editor = LockTimeEditorWindowController(times: currentTimes) { [weak self] times in
+            SettingsManager.shared.updateLockTimes(times)
+            self?.updateUI()
+            self?.performFeedback()
+        }
+        lockTimeEditor = editor
+        editor.showWindow(nil)
+        if openPicker {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                editor.debugOpenTimePicker()
+            }
+        }
+        if let exportSnapshotPath {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
+                editor.debugExportSnapshot(to: URL(fileURLWithPath: exportSnapshotPath))
+            }
+        }
+        if let exportPickerSnapshotPath {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) {
+                editor.debugExportTimePickerSnapshot(to: URL(fileURLWithPath: exportPickerSnapshotPath))
+            }
+        }
+    }
+
     @objc private func lockNow(_ sender: NSMenuItem) {
         ScheduleManager.shared.lockNow()
         performFeedback()

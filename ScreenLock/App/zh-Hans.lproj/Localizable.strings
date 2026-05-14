@@ -96,11 +96,33 @@
 
 /* Lock Time Editor */
 "lock_time_editor.title" = "管理锁屏时间";
+"lock_time_editor.header.eyebrow" = "每日作息";
 "lock_time_editor.message" = "选择一个或多个时间点，应用会每天在这些时间锁屏。";
 "lock_time_editor.column" = "时间";
 "lock_time_editor.picker" = "选中时间";
 "lock_time_editor.hour" = "小时";
 "lock_time_editor.minute" = "分钟";
+"lock_time_editor.empty" = "还没有设置作息时间。\n先添加一个时间开始吧。";
+"lock_time_editor.list_title" = "已保存的时间";
+"lock_time_editor.editor_meta" = "时间编辑器";
+"lock_time_editor.editor_title" = "编辑时间";
+"lock_time_editor.list_hint" = "双击或按回车可编辑，Delete 可删除选中的时间。";
+"lock_time_editor.helper" = "先用右侧选择时间，再添加到列表中。";
+"lock_time_editor.helper.single" = "按回车或双击即可更新当前选中的时间。";
+"lock_time_editor.helper.multi" = "Delete 支持多选删除，更新一次只处理一个时间。";
+"lock_time_editor.list_count.one" = "已保存 1 个";
+"lock_time_editor.list_count.many" = "已保存 %d 个";
+"lock_time_editor.summary" = "共 %d 个时间";
+"lock_time_editor.preview.badge" = "下一次锁屏";
+"lock_time_editor.preview.chip" = "今晚作息";
+"lock_time_editor.preview.caption" = "这里会显示下一条准备保存的锁屏时间。";
+"lock_time_editor.preview.card_title" = "作息提示";
+"lock_time_editor.preview.card_value" = "为下一次屏幕休息准备一个更柔和的睡前提醒。";
+"lock_time_editor.preview.selection" = "正在编辑已保存的 %@。";
+"lock_time_editor.cell.badge" = "每日";
+"lock_time_editor.selected.empty" = "未选中时间";
+"lock_time_editor.selected.value" = "当前选中：%@";
+"lock_time_editor.selected.multiple" = "已选中 %d 个";
 "lock_time_editor.error.title" = "至少保留一个时间";
 "lock_time_editor.error.message" = "请至少保留一个锁屏时间。";
 

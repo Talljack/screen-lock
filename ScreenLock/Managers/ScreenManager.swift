@@ -59,6 +59,8 @@ class ScreenManager {
     private var isManualSoftnessPreviewActive = false
     private var isApplyingGammaUpdate = false
     private var isApplyingLockModeTransition = false
+    private var lockedForegroundApplication: NSRunningApplication?
+    private var didHideLockedForegroundApplication = false
     /// Tracks whether any API capability is degraded.
     private(set) var statusMessage: String?
 
@@ -714,6 +716,7 @@ class ScreenManager {
         currentScheduledLockTime = lockTime ?? settings.normalizedLockTimes.first ?? settings.lockTime
         hasPresentedLockWindows = false
         isAwaitingLockActivation = false
+        captureAndHideForegroundApplication()
 
         NSSound(named: "Glass")?.play()
 
@@ -795,6 +798,7 @@ class ScreenManager {
         currentLockAppearance = nil
         hasPresentedLockWindows = false
         isAwaitingLockActivation = false
+        restoreLockedForegroundApplication()
 
         if force {
             disposeLockWindows()
@@ -871,6 +875,44 @@ class ScreenManager {
         NSApp.presentationOptions = previousPresentationOptions
         previousActivationPolicy = nil
         isLockModeActive = false
+    }
+
+    private func captureAndHideForegroundApplication() {
+        guard lockedForegroundApplication == nil else { return }
+        guard let app = NSWorkspace.shared.frontmostApplication else { return }
+        guard app.bundleIdentifier != Bundle.main.bundleIdentifier else { return }
+
+        lockedForegroundApplication = app
+        didHideLockedForegroundApplication = !app.isHidden
+        if didHideLockedForegroundApplication {
+            os_log(
+                "Hiding foreground app during lock: %{public}@",
+                log: log,
+                type: .info,
+                app.localizedName ?? app.bundleIdentifier ?? "unknown"
+            )
+            app.hide()
+        }
+    }
+
+    private func restoreLockedForegroundApplication() {
+        guard let app = lockedForegroundApplication else { return }
+        lockedForegroundApplication = nil
+
+        guard didHideLockedForegroundApplication else {
+            didHideLockedForegroundApplication = false
+            return
+        }
+
+        didHideLockedForegroundApplication = false
+        os_log(
+            "Restoring foreground app after lock: %{public}@",
+            log: log,
+            type: .info,
+            app.localizedName ?? app.bundleIdentifier ?? "unknown"
+        )
+        app.unhide()
+        app.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
     }
 
     private func rebuildLockWindowsIfNeeded(animated: Bool) {
@@ -1100,6 +1142,7 @@ class ScreenManager {
         currentScheduledLockTime = nil
         hasPresentedLockWindows = false
         isAwaitingLockActivation = false
+        restoreLockedForegroundApplication()
         cancelPendingReactivations()
         disposeLockWindows()
         exitLockMode()

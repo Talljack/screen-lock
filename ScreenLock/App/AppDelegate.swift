@@ -258,6 +258,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         ScheduleManager.shared.start()
         ScreenManager.shared.applyCurrentSoftnessSetting()
         menuBarController = MenuBarController(updater: updaterController.updater)
+        openDebugLockTimeEditorIfNeeded()
 
         StatsManager.shared.onNewAchievement = { achievement in
             DispatchQueue.main.async {
@@ -320,5 +321,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         SettingsManager.shared.markPermissionGuideShown()
+    }
+
+    private func openDebugLockTimeEditorIfNeeded() {
+#if DEBUG
+        let env = ProcessInfo.processInfo.environment
+        guard env["SCREENLOCK_DEBUG_EDITOR"] == "1" else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            self.menuBarController?.presentLockTimeEditorForDebug(
+                openPicker: env["SCREENLOCK_DEBUG_OPEN_PICKER"] == "1",
+                exportSnapshotPath: env["SCREENLOCK_DEBUG_EXPORT_PATH"],
+                exportPickerSnapshotPath: env["SCREENLOCK_DEBUG_EXPORT_PICKER_PATH"]
+            )
+        }
+#endif
     }
 }
