@@ -16,7 +16,7 @@ final class AppcastConfigurationTests: XCTestCase {
 
         XCTAssertEqual(
             feedURL,
-            "https://raw.githubusercontent.com/Talljack/screen-lock/main/appcast.xml"
+            "https://github.com/Talljack/screen-lock/releases/latest/download/appcast.xml"
         )
     }
 }

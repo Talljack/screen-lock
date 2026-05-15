@@ -261,26 +261,31 @@ jobs:
           PREV_TAG=$(git tag --sort=-v:refname | grep -v "^${TAG}$" | head -1 || true)
           if [ -n "$PREV_TAG" ]; then
             COMPARE_URL="https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${TAG}"
-            COMPARE_LINE="See [changes since ${PREV_TAG}](${COMPARE_URL}) for full details."
+            COMPARE_LINE="See changes since ${PREV_TAG}: ${COMPARE_URL}"
             COMPARE_HTML="<p>See <a href=\"${COMPARE_URL}\">changes since ${PREV_TAG}</a> for full details.</p>"
           else
-            COMPARE_LINE="See [commit history](https://github.com/${{ github.repository }}/commits/${TAG})."
+            COMPARE_URL="https://github.com/${{ github.repository }}/commits/${TAG}"
+            COMPARE_LINE="See commit history: ${COMPARE_URL}"
             COMPARE_HTML="<p>See <a href=\"https://github.com/${{ github.repository }}/commits/${TAG}\">commit history</a>.</p>"
           fi
           cat > build/release_notes.md << NOTES_EOF
-          ## ScreenLock ${TAG}
+          ScreenLock ${TAG}
 
-          ### Highlights
-          - Universal binary — runs natively on Intel (x86_64) and Apple Silicon (arm64) Macs
-          - Signed with Developer ID and notarized by Apple — no Gatekeeper warnings
+          Highlights
+          - Universal binary: runs natively on Intel (x86_64) and Apple Silicon (arm64) Macs
+          - Signed with Developer ID and notarized by Apple: no Gatekeeper warnings
 
-          ### Changes
+          Changes
           ${COMPARE_LINE}
 
-          ### Install
-          1. Download \`ScreenLock.dmg\` below
-          2. Open the DMG and drag \`ScreenLock.app\` to \`Applications\`
+          Install
+          1. Download ScreenLock.dmg below
+          2. Open the DMG and drag ScreenLock.app to Applications
           3. The app runs in the menu bar
+
+          Note for older versions
+          - Versions that still use the legacy GitHub updater may open the release page instead of downloading directly.
+          - If that happens, download ScreenLock.dmg from the release page once. Later versions use Sparkle for in-app updates.
           NOTES_EOF
           cat > build/release_notes.html << HTML_EOF
           <section>

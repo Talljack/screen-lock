@@ -15,15 +15,15 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.6</string>
+	<string>1.0.13</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>80</string>
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>ScreenLock needs permission to lock your screen at scheduled times.</string>
 	<key>SUFeedURL</key>
-	<string>https://raw.githubusercontent.com/Talljack/screen-lock/main/appcast.xml</string>
+	<string>https://github.com/Talljack/screen-lock/releases/latest/download/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>t5BuJRYkalejaR25jPfscdJxwTOjZlETDCrpwpcTl80=</string>
 </dict>
