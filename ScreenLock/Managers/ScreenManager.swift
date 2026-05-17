@@ -8,6 +8,10 @@ private let log = OSLog(subsystem: "com.yugangcao.screenlock", category: "Screen
 class ScreenManager {
     static let shared = ScreenManager()
 
+#if DEBUG
+    var debugApplyCurrentSoftnessSettingHandler: (() -> Void)?
+#endif
+
     struct SleepTransitionState: Equatable {
         var inactiveSince: Date?
         var lastWakeAt: Date?
@@ -331,6 +335,9 @@ class ScreenManager {
     }
 
     func applyCurrentSoftnessSetting() {
+#if DEBUG
+        debugApplyCurrentSoftnessSettingHandler?()
+#endif
         previewRestoreWorkItem?.cancel()
         previewRestoreWorkItem = nil
 
