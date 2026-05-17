@@ -284,8 +284,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func handleSettingsChanged() {
         let settings = SettingsManager.shared.settings
         updatePreventSleep(settings.preventSleepEnabled)
+        ScreenManager.shared.applyCurrentSoftnessSetting()
         ScheduleManager.shared.checkSchedule()
     }
+
+#if DEBUG
+    func debugHandleSettingsChanged() {
+        handleSettingsChanged()
+    }
+#endif
 
     private func updatePreventSleep(_ enabled: Bool) {
         if enabled {
