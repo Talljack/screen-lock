@@ -21,6 +21,11 @@ class ScheduleManager {
 
     var onStateChange: ((ScheduleState) -> Void)?
 
+#if DEBUG
+    var debugSettingsProvider: (() -> Settings)?
+    var debugNowProvider: (() -> Date)?
+#endif
+
     private init() {}
 
     func start() {
@@ -36,7 +41,11 @@ class ScheduleManager {
     }
 
     func checkSchedule() {
+#if DEBUG
+        let settings = debugSettingsProvider?() ?? SettingsManager.shared.settings
+#else
         let settings = SettingsManager.shared.settings
+#endif
         defer { scheduleNextCheck(using: settings) }
 
         if !settings.lockEnabled {
@@ -48,7 +57,11 @@ class ScheduleManager {
             return
         }
 
+#if DEBUG
+        let now = debugNowProvider?() ?? Date()
+#else
         let now = Date()
+#endif
         let evaluation = evaluateSchedule(
             for: settings,
             relativeTo: now,
@@ -90,9 +103,8 @@ class ScheduleManager {
             if state != .normal {
                 ScreenManager.shared.cancelDimming()
                 transitionToNormal()
-            } else {
-                ScreenManager.shared.clearManualSoftnessPreviewIfNeeded()
             }
+            ScreenManager.shared.applyCurrentSoftnessSetting()
         }
     }
 

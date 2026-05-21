@@ -84,6 +84,41 @@ final class ScheduleLogicTests: XCTestCase {
         XCTAssertEqual(manager.nextCheckDelay(for: settings, now: now), 1, accuracy: 0.1)
     }
 
+    func testCheckScheduleAppliesStandaloneScreenSoftnessWhenScheduleIsInactive() {
+        let manager = ScheduleManager.shared
+        var settings = Settings.default
+        settings.lockEnabled = true
+        settings.lockTime = "23:50"
+        settings.warningMinutes = 1
+
+        let now = Calendar.current.date(from: DateComponents(
+            year: 2026, month: 5, day: 21, hour: 12, minute: 0, second: 0
+        ))!
+
+        let screenManager = ScreenManager.shared
+        let originalSettingsProvider = manager.debugSettingsProvider
+        let originalNowProvider = manager.debugNowProvider
+        let originalHandler = screenManager.debugApplyCurrentSoftnessSettingHandler
+        var applyCount = 0
+
+        manager.debugSettingsProvider = { settings }
+        manager.debugNowProvider = { now }
+        screenManager.debugApplyCurrentSoftnessSettingHandler = {
+            applyCount += 1
+        }
+
+        defer {
+            manager.debugSettingsProvider = originalSettingsProvider
+            manager.debugNowProvider = originalNowProvider
+            screenManager.debugApplyCurrentSoftnessSettingHandler = originalHandler
+            manager.stop()
+        }
+
+        manager.checkSchedule()
+
+        XCTAssertEqual(applyCount, 1)
+    }
+
     func testSleepTransitionStateDetectsLockWasMissedDuringSleep() {
         let lockMoment = Date(timeIntervalSince1970: 1_000)
         let state = ScreenManager.SleepTransitionState(
