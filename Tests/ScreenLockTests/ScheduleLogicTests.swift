@@ -2,6 +2,60 @@ import XCTest
 @testable import ScreenLock
 
 final class ScheduleLogicTests: XCTestCase {
+    func testEvaluateScheduleLocksImmediatelyAtEveningBoundary() {
+        let manager = ScheduleManager.shared
+        var settings = Settings.default
+        settings.lockEnabled = true
+        settings.lockTime = "23:50"
+        settings.warningMinutes = 1
+
+        let now = Calendar.current.date(from: DateComponents(
+            year: 2026, month: 5, day: 20, hour: 23, minute: 50, second: 1
+        ))!
+
+        let evaluation = manager.evaluateSchedule(for: settings, relativeTo: now)
+        guard case .lock(let occurrence) = evaluation else {
+            return XCTFail("Expected lock evaluation at the scheduled evening boundary, got \(evaluation)")
+        }
+
+        XCTAssertEqual(occurrence.sourceTime, "23:50")
+        XCTAssertEqual(
+            occurrence.lockTime,
+            Calendar.current.date(from: DateComponents(
+                year: 2026, month: 5, day: 20, hour: 23, minute: 50, second: 0
+            ))
+        )
+    }
+
+    func testEvaluateScheduleDoesNotRelockHandledOccurrenceWithinGraceWindow() {
+        let manager = ScheduleManager.shared
+        var settings = Settings.default
+        settings.lockEnabled = true
+        settings.lockTime = "23:50"
+        settings.warningMinutes = 1
+
+        let occurrenceDate = Calendar.current.date(from: DateComponents(
+            year: 2026, month: 5, day: 20, hour: 23, minute: 50, second: 0
+        ))!
+        let now = occurrenceDate.addingTimeInterval(90)
+
+        let evaluation = manager.evaluateSchedule(
+            for: settings,
+            relativeTo: now,
+            handledScheduledLock: occurrenceDate
+        )
+
+        XCTAssertEqual(evaluation, .inactive)
+
+        let nextOccurrence = manager.nextOccurrence(for: settings, relativeTo: now)
+        XCTAssertEqual(
+            nextOccurrence?.lockTime,
+            Calendar.current.date(from: DateComponents(
+                year: 2026, month: 5, day: 21, hour: 23, minute: 50, second: 0
+            ))
+        )
+    }
+
     func testNextCheckDelayAlignsToWarningBoundaryBeforeWarningStarts() {
         let manager = ScheduleManager.shared
         var settings = Settings.default

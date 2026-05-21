@@ -15,6 +15,7 @@ class ScheduleManager {
     private let graceWindowSeconds: TimeInterval = 5 * 60
 
     private var timer: Timer?
+    private var handledScheduledOccurrence: Date?
     private(set) var state: ScheduleState = .normal
     var isInWarningState: Bool { state == .warning }
 
@@ -39,6 +40,7 @@ class ScheduleManager {
         defer { scheduleNextCheck(using: settings) }
 
         if !settings.lockEnabled {
+            handledScheduledOccurrence = nil
             if state != .normal {
                 transitionToNormal()
             }
@@ -47,20 +49,17 @@ class ScheduleManager {
         }
 
         let now = Date()
+        let evaluation = evaluateSchedule(
+            for: settings,
+            relativeTo: now,
+            handledScheduledLock: handledScheduledOccurrence
+        )
 
-        guard let nextOccurrence = nextOccurrence(for: settings, relativeTo: now) else {
-            os_log("Invalid lock time format", log: log, type: .error)
-            return
-        }
-
-        let warningStart = nextOccurrence.lockTime.addingTimeInterval(-Double(settings.warningMinutes) * 60)
-
-        // Grace window: within 5 minutes after lock time, still trigger lock.
-        let graceEnd = nextOccurrence.lockTime.addingTimeInterval(graceWindowSeconds)
-
-        if now >= nextOccurrence.lockTime && now < graceEnd {
-            if ScreenManager.shared.didSleepThrough(nextOccurrence.lockTime, now: now) {
+        switch evaluation {
+        case .lock(let occurrence):
+            if ScreenManager.shared.didSleepThrough(occurrence.lockTime, now: now) {
                 os_log("Skipping scheduled lock because the system slept through the lock time", log: log, type: .info)
+                handledScheduledOccurrence = occurrence.lockTime
                 if state != .normal {
                     transitionToNormal()
                 }
@@ -69,11 +68,15 @@ class ScheduleManager {
             }
 
             if state != .locked {
-                transitionToLocked(trigger: .scheduled, lockTime: nextOccurrence.sourceTime)
+                transitionToLocked(
+                    trigger: .scheduled,
+                    lockTime: occurrence.sourceTime,
+                    scheduledOccurrence: occurrence.lockTime
+                )
             }
-        } else if now >= warningStart && now < nextOccurrence.lockTime {
+        case .warning(let occurrence):
             let totalWarningInterval = max(Double(settings.warningMinutes) * 60, 1)
-            let warningProgress = Float(now.timeIntervalSince(warningStart) / totalWarningInterval)
+            let warningProgress = Float(now.timeIntervalSince(occurrence.warningStart) / totalWarningInterval)
 
             if state != .warning {
                 transitionToWarning(durationMinutes: settings.warningMinutes)
@@ -83,7 +86,7 @@ class ScheduleManager {
                 durationMinutes: settings.warningMinutes,
                 softnessLevel: settings.warningSoftnessLevel
             )
-        } else {
+        case .inactive:
             if state != .normal {
                 ScreenManager.shared.cancelDimming()
                 transitionToNormal()
@@ -93,60 +96,107 @@ class ScheduleManager {
         }
     }
 
-    private struct NextOccurrence {
+    struct ScheduledOccurrence: Equatable {
         let lockTime: Date
         let sourceTime: String
+        let warningStart: Date
+        let graceEnd: Date
     }
 
-    /// Returns today's occurrence of `timeString` (HH:mm) regardless of whether
-    /// it has passed. Used for range-based schedule comparison.
-    private func todayOccurrence(of timeString: String, relativeTo now: Date) -> Date? {
+    enum ScheduleEvaluation: Equatable {
+        case inactive
+        case warning(ScheduledOccurrence)
+        case lock(ScheduledOccurrence)
+    }
+
+    func evaluateSchedule(
+        for settings: Settings,
+        relativeTo now: Date,
+        handledScheduledLock: Date? = nil
+    ) -> ScheduleEvaluation {
+        if let occurrence = activeLockOccurrence(for: settings, relativeTo: now) {
+            if handledScheduledLock == occurrence.lockTime {
+                return .inactive
+            }
+            return .lock(occurrence)
+        }
+
+        if let occurrence = activeWarningOccurrence(for: settings, relativeTo: now) {
+            return .warning(occurrence)
+        }
+
+        return .inactive
+    }
+
+    /// Used for countdown display and next-check scheduling. Returns the next
+    /// future occurrence rather than the currently active lock window.
+    func nextOccurrence(for settings: Settings, relativeTo now: Date) -> ScheduledOccurrence? {
+        nearbyOccurrences(for: settings, now: now)
+            .filter { $0.lockTime >= now }
+            .min(by: { $0.lockTime < $1.lockTime })
+    }
+
+    private func activeLockOccurrence(for settings: Settings, relativeTo now: Date) -> ScheduledOccurrence? {
+        nearbyOccurrences(for: settings, now: now)
+            .filter { now >= $0.lockTime && now < $0.graceEnd }
+            .max(by: { $0.lockTime < $1.lockTime })
+    }
+
+    private func activeWarningOccurrence(for settings: Settings, relativeTo now: Date) -> ScheduledOccurrence? {
+        nearbyOccurrences(for: settings, now: now)
+            .filter { now >= $0.warningStart && now < $0.lockTime }
+            .min(by: { $0.lockTime < $1.lockTime })
+    }
+
+    private func nearbyOccurrences(for settings: Settings, now: Date) -> [ScheduledOccurrence] {
+        settings.normalizedLockTimes.flatMap { time in
+            candidateDates(for: time, relativeTo: now).map { lockTime in
+                ScheduledOccurrence(
+                    lockTime: lockTime,
+                    sourceTime: time,
+                    warningStart: lockTime.addingTimeInterval(-Double(settings.warningMinutes) * 60),
+                    graceEnd: lockTime.addingTimeInterval(graceWindowSeconds)
+                )
+            }
+        }
+    }
+
+    private func candidateDates(for timeString: String, relativeTo now: Date) -> [Date] {
         let parts = timeString.split(separator: ":").compactMap { Int($0) }
         guard parts.count == 2,
               (0...23).contains(parts[0]),
-              (0...59).contains(parts[1]) else { return nil }
+              (0...59).contains(parts[1]) else { return [] }
 
-        let cal = Calendar.current
-        var dc = cal.dateComponents([.year, .month, .day], from: now)
-        dc.hour = parts[0]
-        dc.minute = parts[1]
-        dc.second = 0
+        let calendar = Calendar.current
+        var components = calendar.dateComponents([.year, .month, .day], from: now)
+        components.hour = parts[0]
+        components.minute = parts[1]
+        components.second = 0
 
-        guard let target = cal.date(from: dc) else { return nil }
+        guard let today = calendar.date(from: components) else { return [] }
 
-        // For times in the small hours (0:00–5:59), if current time is in the
-        // evening (18:00+), this means the lock is "tonight" = tomorrow calendar day.
-        if parts[0] < 6 && cal.component(.hour, from: now) >= 18 {
-            return cal.date(byAdding: .day, value: 1, to: target)
-        }
-
-        // For evening times, if we're past the grace window, roll to tomorrow
-        // so getTimeUntilLock shows the next occurrence.
-        let graceEnd = target.addingTimeInterval(graceWindowSeconds)
-        if now >= graceEnd && parts[0] >= 18 {
-            return cal.date(byAdding: .day, value: 1, to: target)
-        }
-
-        return target
-    }
-
-    private func occurrences(for settings: Settings, now: Date) -> [(time: String, date: Date)] {
-        settings.normalizedLockTimes.compactMap { time in
-            guard let today = todayOccurrence(of: time, relativeTo: now) else { return nil }
-            let graceEnd = today.addingTimeInterval(graceWindowSeconds)
-            let lockDate = now >= graceEnd ? Calendar.current.date(byAdding: .day, value: 1, to: today) ?? today : today
-            return (time: time, date: lockDate)
+        return [-1, 0, 1].compactMap { offset in
+            calendar.date(byAdding: .day, value: offset, to: today)
         }
     }
 
-    /// Used for countdown display — always returns a future lock time.
-    private func nextOccurrence(for settings: Settings, relativeTo now: Date) -> NextOccurrence? {
-        let options = occurrences(for: settings, now: now)
-        guard let next = options.min(by: { $0.date < $1.date }) else { return nil }
-        return NextOccurrence(lockTime: next.date, sourceTime: next.time)
+    private func markScheduledOccurrenceHandled(_ occurrence: Date?) {
+        handledScheduledOccurrence = occurrence
+    }
+
+    private func clearHandledScheduledOccurrenceIfNeeded(relativeTo now: Date) {
+        guard let handledScheduledOccurrence else { return }
+
+        let hasFutureMatch = nearbyOccurrences(for: SettingsManager.shared.settings, now: now)
+            .contains { $0.lockTime == handledScheduledOccurrence && now < $0.graceEnd }
+
+        if !hasFutureMatch {
+            self.handledScheduledOccurrence = nil
+        }
     }
 
     private func transitionToNormal() {
+        clearHandledScheduledOccurrenceIfNeeded(relativeTo: Date())
         state = .normal
         os_log("State -> Normal", log: log, type: .info)
         onStateChange?(.normal)
@@ -178,10 +228,17 @@ class ScheduleManager {
         }
     }
 
-    private func transitionToLocked(trigger: LockEvent.Trigger, lockTime: String? = nil) {
+    private func transitionToLocked(
+        trigger: LockEvent.Trigger,
+        lockTime: String? = nil,
+        scheduledOccurrence: Date? = nil
+    ) {
         // Skip lock if displays are already asleep
         if ScreenManager.shared.areDisplaysAsleep() {
             os_log("Displays already asleep, skipping lock", log: log, type: .info)
+            if trigger == .scheduled {
+                markScheduledOccurrenceHandled(scheduledOccurrence)
+            }
             transitionToNormal()
             return
         }
@@ -190,6 +247,9 @@ class ScheduleManager {
         os_log("State -> Locked", log: log, type: .info)
         ScreenManager.shared.lockScreenAndTurnOffDisplay(trigger: trigger, lockTime: lockTime) { [weak self] in
             DispatchQueue.main.async {
+                if trigger == .scheduled {
+                    self?.markScheduledOccurrenceHandled(scheduledOccurrence)
+                }
                 self?.transitionToNormal()
             }
         }
@@ -205,6 +265,7 @@ class ScheduleManager {
 
         let now = Date()
         guard let lockTime = nextOccurrence(for: settings, relativeTo: now) else {
+            os_log("Invalid lock time format", log: log, type: .error)
             return L("schedule.format_error")
         }
 
@@ -229,28 +290,22 @@ class ScheduleManager {
 
     func nextCheckDelay(for settings: Settings, now: Date) -> TimeInterval {
         guard settings.lockEnabled else { return 60.0 }
-        guard let next = nextOccurrence(for: settings, relativeTo: now) else {
-            return 60.0
-        }
 
-        let warningStart = next.lockTime.addingTimeInterval(-Double(settings.warningMinutes) * 60)
-        let graceEnd = next.lockTime.addingTimeInterval(graceWindowSeconds)
+        if case .inactive = evaluateSchedule(for: settings, relativeTo: now, handledScheduledLock: handledScheduledOccurrence) {
+            guard let next = nextOccurrence(for: settings, relativeTo: now) else {
+                return 60.0
+            }
 
-        if now < warningStart {
-            return max(1.0, min(60.0, warningStart.timeIntervalSince(now)))
-        }
+            let nextWarningStart = next.warningStart
+            if now < nextWarningStart {
+                return max(1.0, min(60.0, nextWarningStart.timeIntervalSince(now)))
+            }
 
-        if now < graceEnd {
+            let nextBoundary = min(nextWarningStart, next.lockTime)
+            return max(1.0, min(60.0, nextBoundary.timeIntervalSince(now)))
+        } else {
             return 1.0
         }
-
-        guard let nextLock = nextOccurrence(for: settings, relativeTo: now) else {
-            return 60.0
-        }
-
-        let nextWarningStart = nextLock.lockTime.addingTimeInterval(-Double(settings.warningMinutes) * 60)
-        let nextBoundary = min(nextWarningStart, nextLock.lockTime)
-        return max(1.0, min(60.0, nextBoundary.timeIntervalSince(now)))
     }
 
     private func scheduleNextCheck(using settings: Settings) {
