@@ -6,21 +6,21 @@
         <description>Most recent updates to ScreenLock</description>
         <language>zh-cn</language>
         <item>
-            <title>Version 1.0.16</title>
-            <pubDate>Thu, 21 May 2026 01:51:25 +0000</pubDate>
-            <sparkle:version>86</sparkle:version>
-            <sparkle:shortVersionString>1.0.16</sparkle:shortVersionString>
+            <title>Version 1.0.17</title>
+            <pubDate>Fri, 22 May 2026 08:31:00 +0000</pubDate>
+            <sparkle:version>89</sparkle:version>
+            <sparkle:shortVersionString>1.0.17</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
             <description sparkle:format="html"><![CDATA[
 <section>
-  <h1>ScreenLock v1.0.16</h1>
+  <h1>ScreenLock v1.0.17</h1>
   <h2>Highlights</h2>
   <ul>
     <li>Universal binary, running natively on Intel (x86_64) and Apple Silicon (arm64) Macs</li>
     <li>Signed with Developer ID and notarized by Apple, without Gatekeeper warnings</li>
   </ul>
   <h2>Changes</h2>
-  <p>See <a href="https://github.com/Talljack/screen-lock/compare/v1.0.15...v1.0.16">changes since v1.0.15</a> for full details.</p>
+  <p>See <a href="https://github.com/Talljack/screen-lock/compare/v1.0.16...v1.0.17">changes since v1.0.16</a> for full details.</p>
   <h2>Install</h2>
   <ol>
     <li>Download <code>ScreenLock.dmg</code>.</li>
@@ -29,10 +29,10 @@
   </ol>
 </section>
             ]]></description>
-            <enclosure url="https://github.com/Talljack/screen-lock/releases/download/v1.0.16/ScreenLock.dmg"
+            <enclosure url="https://github.com/Talljack/screen-lock/releases/download/v1.0.17/ScreenLock.dmg"
                        type="application/x-apple-diskimage"
-                       sparkle:edSignature="oTYIZfrhpDUHI3OIfFbzCjA19YIJifcNZ80DWvFiFrDdXjsDiJhcR8tTyRsBmhir8bsAC18lFJ9VPtsbekngDg=="
-                       length="2341280"/>
+                       sparkle:edSignature="4DFB7kOpgvD2PcxLIk2mAvbOQPsPz/PeQIGJ7WBLSQ2mqs7md5/149YpcRAfXW/lXiverJ/fjht1BorZeXy5Ag=="
+                       length="2341008"/>
         </item>
     </channel>
 </rss>
