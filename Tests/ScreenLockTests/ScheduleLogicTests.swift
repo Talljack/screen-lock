@@ -119,6 +119,36 @@ final class ScheduleLogicTests: XCTestCase {
         XCTAssertEqual(applyCount, 1)
     }
 
+    func testEvaluateScheduleEntersWarningDuringConfiguredWindow() {
+        let manager = ScheduleManager.shared
+        var settings = Settings.default
+        settings.lockEnabled = true
+        settings.lockTime = "23:50"
+        settings.warningMinutes = 5
+
+        let now = Calendar.current.date(from: DateComponents(
+            year: 2026, month: 5, day: 20, hour: 23, minute: 46, second: 0
+        ))!
+
+        let evaluation = manager.evaluateSchedule(for: settings, relativeTo: now)
+        guard case .warning(let occurrence) = evaluation else {
+            return XCTFail("Expected warning evaluation inside the prewarning window, got \(evaluation)")
+        }
+
+        XCTAssertEqual(
+            occurrence.warningStart,
+            Calendar.current.date(from: DateComponents(
+                year: 2026, month: 5, day: 20, hour: 23, minute: 45, second: 0
+            ))
+        )
+        XCTAssertEqual(
+            occurrence.lockTime,
+            Calendar.current.date(from: DateComponents(
+                year: 2026, month: 5, day: 20, hour: 23, minute: 50, second: 0
+            ))
+        )
+    }
+
     func testSleepTransitionStateDetectsLockWasMissedDuringSleep() {
         let lockMoment = Date(timeIntervalSince1970: 1_000)
         let state = ScreenManager.SleepTransitionState(

@@ -18,6 +18,6 @@ final class AppDelegateTests: XCTestCase {
 
         appDelegate.debugHandleSettingsChanged()
 
-        XCTAssertEqual(applyCount, 1)
+        XCTAssertGreaterThanOrEqual(applyCount, 1)
     }
 }

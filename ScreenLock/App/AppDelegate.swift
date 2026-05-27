@@ -276,6 +276,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ aNotification: Notification) {
         ScheduleManager.shared.stop()
+        PowerManager.shared.disableLockScreenWakefulness()
         PowerManager.shared.disablePreventSleep()
         ScreenManager.shared.restoreOriginalGamma()
         os_log("ScreenLock terminated", log: log, type: .info)

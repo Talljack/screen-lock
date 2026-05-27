@@ -10,6 +10,7 @@ class ScreenManager {
 
 #if DEBUG
     var debugApplyCurrentSoftnessSettingHandler: (() -> Void)?
+    var debugShouldRecordStatsForCompletedLocks = true
 #endif
 
     struct SleepTransitionState: Equatable {
@@ -45,6 +46,7 @@ class ScreenManager {
     private var lockWindows: [LockScreenWindow] = []
     private var lockTimer: DispatchSourceTimer?
     private var remainingLockSeconds = 0
+    private var lockSequenceEndsAt: Date?
     private var isCompletingLockSequence = false
     private var lockCompletion: (() -> Void)?
     private var currentLockAppearance: LockScreenAppearance?
@@ -289,16 +291,18 @@ class ScreenManager {
         dimmingDurationSeconds = max(Double(durationMinutes) * 60, 1)
         dimmingStartDate = Date().addingTimeInterval(-dimmingDurationSeconds * Double(clampedProgress))
         currentDimmingProgress = clampedProgress
+        let visualProgress = warningDisplayProgress(for: clampedProgress, softnessLevel: softnessLevel)
 
         os_log(
-            "Starting gradual dimming over %d minutes at progress %.2f",
+            "Starting gradual dimming over %d minutes at raw progress %.2f (visual %.2f)",
             log: log,
             type: .info,
             durationMinutes,
-            clampedProgress
+            clampedProgress,
+            visualProgress
         )
 
-        applyDimmingAndWarmth(progress: clampedProgress, softnessLevel: softnessLevel)
+        applyDimmingAndWarmth(progress: visualProgress, softnessLevel: softnessLevel)
         ensureDimmingTimer()
     }
 
@@ -380,6 +384,19 @@ class ScreenManager {
         applyDimmingAndWarmth(progress: profile.manualStrengthProgress, softnessLevel: level, profile: profile)
     }
 
+    private func warningDisplayProgress(
+        for rawProgress: Float,
+        softnessLevel: WarningSoftnessLevel,
+        now: Date = Date()
+    ) -> Float {
+        guard softnessLevel != .off else { return 0 }
+
+        let clampedRawProgress = min(max(rawProgress, 0), 1)
+        let baselineProgress = resolvedSoftnessProfile(for: softnessLevel, now: now).manualStrengthProgress
+
+        return baselineProgress + ((1 - baselineProgress) * clampedRawProgress)
+    }
+
     private func resolvedSoftnessProfile(for level: WarningSoftnessLevel, now: Date = Date()) -> SoftnessProfile {
         guard level == .smart else {
             return SoftnessProfile(
@@ -456,6 +473,14 @@ class ScreenManager {
 
     func debugResolvedSoftnessProfile(for level: WarningSoftnessLevel, now: Date = Date()) -> SoftnessProfile {
         resolvedSoftnessProfile(for: level, now: now)
+    }
+
+    func debugResolvedWarningDisplayProgress(
+        rawProgress: Float,
+        softnessLevel: WarningSoftnessLevel,
+        now: Date = Date()
+    ) -> Float {
+        warningDisplayProgress(for: rawProgress, softnessLevel: softnessLevel, now: now)
     }
 
     func debugResolvedSolarSoftnessProfile(
@@ -655,7 +680,8 @@ class ScreenManager {
         let elapsed = Date().timeIntervalSince(dimmingStartDate)
         let total = max(dimmingDurationSeconds, 1)
         currentDimmingProgress = min(max(Float(elapsed / total), 0), 1)
-        applyDimmingAndWarmth(progress: currentDimmingProgress, softnessLevel: softnessLevel)
+        let visualProgress = warningDisplayProgress(for: currentDimmingProgress, softnessLevel: softnessLevel)
+        applyDimmingAndWarmth(progress: visualProgress, softnessLevel: softnessLevel)
     }
 
     private func applyDimmingAndWarmth(
@@ -716,6 +742,14 @@ class ScreenManager {
         let settings = SettingsManager.shared.settings.validated()
         let appearance = settings.appearance.withRandomCopyIfNeeded()
         remainingLockSeconds = settings.forcedBreakMinutes * 60
+        lockSequenceEndsAt = Date().addingTimeInterval(TimeInterval(remainingLockSeconds))
+        os_log(
+            "Lock sequence configured for %d minutes (%d seconds)",
+            log: log,
+            type: .info,
+            settings.forcedBreakMinutes,
+            remainingLockSeconds
+        )
         lockCompletion = completion
         isCompletingLockSequence = false
         currentLockAppearance = appearance
@@ -731,8 +765,9 @@ class ScreenManager {
         requestLockActivationAndPresent()
     }
 
-    private func startLockCountdown() {
+    private func startLockCountdown(now: Date = Date()) {
         cancelLockTimer(reason: "restarting countdown")
+        syncRemainingLockCountdown(now: now)
         updateLockWindows()
         os_log(
             "Starting lock countdown from %d seconds",
@@ -746,7 +781,7 @@ class ScreenManager {
         timer.setEventHandler { [weak self] in
             guard let self = self else { return }
 
-            self.remainingLockSeconds -= 1
+            self.syncRemainingLockCountdown()
             os_log(
                 "Lock timer handler fired; remaining=%d",
                 log: log,
@@ -784,6 +819,18 @@ class ScreenManager {
         isCompletingLockSequence = true
 
         let settings = SettingsManager.shared.settings
+        #if DEBUG
+        if debugShouldRecordStatsForCompletedLocks {
+            let event = LockEvent(
+                date: Date(),
+                lockTime: currentScheduledLockTime ?? settings.normalizedLockTimes.first ?? settings.lockTime,
+                trigger: currentLockTrigger,
+                breakDurationSeconds: settings.forcedBreakMinutes * 60,
+                completed: true
+            )
+            StatsManager.shared.record(event: event)
+        }
+        #else
         let event = LockEvent(
             date: Date(),
             lockTime: currentScheduledLockTime ?? settings.normalizedLockTimes.first ?? settings.lockTime,
@@ -792,8 +839,10 @@ class ScreenManager {
             completed: true
         )
         StatsManager.shared.record(event: event)
+        #endif
 
         closeLockWindows(force: true)
+        lockSequenceEndsAt = nil
         lockCompletion?()
         lockCompletion = nil
         currentScheduledLockTime = nil
@@ -803,6 +852,7 @@ class ScreenManager {
     private func closeLockWindows(force: Bool) {
         cancelLockTimer(reason: "closing lock windows")
         currentLockAppearance = nil
+        lockSequenceEndsAt = nil
         hasPresentedLockWindows = false
         isAwaitingLockActivation = false
         restoreLockedForegroundApplication()
@@ -842,6 +892,7 @@ class ScreenManager {
         guard !isLockModeActive else { return }
 
         isLockModeActive = true
+        PowerManager.shared.enableLockScreenWakefulness()
         previousActivationPolicy = NSApp.activationPolicy()
         previousPresentationOptions = NSApp.presentationOptions
         isApplyingLockModeTransition = true
@@ -879,6 +930,7 @@ class ScreenManager {
         guard isLockModeActive else { return }
 
         cancelPendingReactivations()
+        PowerManager.shared.disableLockScreenWakefulness()
         NSApp.presentationOptions = previousPresentationOptions
         previousActivationPolicy = nil
         isLockModeActive = false
@@ -985,6 +1037,10 @@ class ScreenManager {
 
     private func activateLockWindows(animated: Bool) {
         guard isLockModeActive, !lockWindows.isEmpty else { return }
+        if finishExpiredLockSequenceIfNeeded(reason: "lock window activation") {
+            return
+        }
+
         let isActive = NSApp.isActive
 
         os_log(
@@ -1046,12 +1102,18 @@ class ScreenManager {
 
     private func reactivateLockModeIfNeeded() {
         guard isLockModeActive, !lockWindows.isEmpty else { return }
+        if finishExpiredLockSequenceIfNeeded(reason: "reactivation") {
+            return
+        }
         activateLockWindows(animated: false)
         scheduleReactivationBurst()
     }
 
     private func requestLockActivationAndPresent() {
         guard isLockModeActive else { return }
+        if finishExpiredLockSequenceIfNeeded(reason: "activation request") {
+            return
+        }
 
         os_log("Requesting lock activation", log: log, type: .info)
 
@@ -1075,6 +1137,9 @@ class ScreenManager {
 
     private func completePendingLockPresentationIfNeeded() {
         guard isAwaitingLockActivation, isLockModeActive else { return }
+        if finishExpiredLockSequenceIfNeeded(reason: "pending activation completion") {
+            return
+        }
         guard NSApp.isActive else {
             os_log("Lock presentation still waiting for active app", log: log, type: .info)
             return
@@ -1109,8 +1174,8 @@ class ScreenManager {
         reactivationWorkItems.removeAll()
     }
 
-    private func handleSystemInactivityStarted(reason: String) {
-        sleepTransitionState.inactiveSince = Date()
+    private func handleSystemInactivityStarted(reason: String, now: Date = Date()) {
+        sleepTransitionState.inactiveSince = now
         os_log(
             "Observed inactivity start: %{public}@ (lockActive=%{public}@, windows=%d, remaining=%d)",
             log: log,
@@ -1120,11 +1185,24 @@ class ScreenManager {
             lockWindows.count,
             remainingLockSeconds
         )
+
+        if isLockModeActive {
+            syncRemainingLockCountdown(now: now)
+            os_log(
+                "Preserving active lock sequence during %{public}@ with %d seconds remaining",
+                log: log,
+                type: .info,
+                reason,
+                remainingLockSeconds
+            )
+            return
+        }
+
         abortActiveLockSequence(reason: reason)
     }
 
-    private func handleSystemWake(reason: String) {
-        sleepTransitionState.lastWakeAt = Date()
+    private func handleSystemWake(reason: String, now: Date = Date()) {
+        sleepTransitionState.lastWakeAt = now
         os_log(
             "Observed wake: %{public}@ (lockActive=%{public}@, windows=%d, remaining=%d)",
             log: log,
@@ -1134,7 +1212,32 @@ class ScreenManager {
             lockWindows.count,
             remainingLockSeconds
         )
-        abortActiveLockSequence(reason: reason)
+        if finishExpiredLockSequenceIfNeeded(reason: "wake: \(reason)", now: now) {
+            return
+        }
+        resumeActiveLockSequenceAfterWake(reason: reason, now: now)
+    }
+
+    private func resumeActiveLockSequenceAfterWake(reason: String, now: Date) {
+        guard isLockModeActive else { return }
+
+        syncRemainingLockCountdown(now: now)
+        os_log(
+            "Resuming active lock sequence after %{public}@ with %d seconds remaining",
+            log: log,
+            type: .info,
+            reason,
+            remainingLockSeconds
+        )
+
+        if !lockWindows.isEmpty {
+            updateLockWindows()
+        }
+
+        requestLockActivationAndPresent()
+        if lockTimer == nil {
+            startLockCountdown(now: now)
+        }
     }
 
     private func abortActiveLockSequence(reason: String) {
@@ -1144,6 +1247,7 @@ class ScreenManager {
 
         cancelLockTimer(reason: "aborting lock UI: \(reason)")
         remainingLockSeconds = 0
+        lockSequenceEndsAt = nil
         currentLockAppearance = nil
         isCompletingLockSequence = false
         currentScheduledLockTime = nil
@@ -1163,6 +1267,22 @@ class ScreenManager {
         sleepTransitionState.crossed(moment, now: now)
     }
 
+    private func syncRemainingLockCountdown(now: Date = Date()) {
+        guard let lockSequenceEndsAt else { return }
+        remainingLockSeconds = max(Int(ceil(lockSequenceEndsAt.timeIntervalSince(now))), 0)
+    }
+
+    private func finishExpiredLockSequenceIfNeeded(reason: String, now: Date = Date()) -> Bool {
+        guard lockSequenceEndsAt != nil else { return false }
+
+        syncRemainingLockCountdown(now: now)
+        guard remainingLockSeconds <= 0 else { return false }
+
+        os_log("Finishing expired lock sequence during %{public}@", log: log, type: .info, reason)
+        completeLockSequence()
+        return true
+    }
+
     func restoreOriginalGamma() {
         previewRestoreWorkItem?.cancel()
         previewRestoreWorkItem = nil
@@ -1170,4 +1290,66 @@ class ScreenManager {
 
         os_log("Original gamma restored", log: log, type: .info)
     }
+
+#if DEBUG
+    func debugResolvedRemainingLockSeconds(durationSeconds: Int, startedAt: Date, now: Date) -> Int {
+        max(Int(ceil(startedAt.addingTimeInterval(TimeInterval(durationSeconds)).timeIntervalSince(now))), 0)
+    }
+
+    func debugConfigureLockState(
+        remainingSeconds: Int,
+        endsAt: Date?,
+        isLockModeActive: Bool,
+        trigger: LockEvent.Trigger = .manual,
+        scheduledLockTime: String? = nil,
+        completion: (() -> Void)? = nil
+    ) {
+        self.remainingLockSeconds = remainingSeconds
+        self.lockSequenceEndsAt = endsAt
+        self.isLockModeActive = isLockModeActive
+        self.currentLockTrigger = trigger
+        self.currentScheduledLockTime = scheduledLockTime
+        self.lockCompletion = completion
+        self.hasPresentedLockWindows = false
+        self.isAwaitingLockActivation = false
+        self.currentLockAppearance = nil
+    }
+
+    func debugHandleSystemWake(reason: String, now: Date) {
+        handleSystemWake(reason: reason, now: now)
+    }
+
+    func debugHandleSystemInactivityStarted(reason: String, now: Date) {
+        handleSystemInactivityStarted(reason: reason, now: now)
+    }
+
+    func debugIsLockModeActive() -> Bool {
+        isLockModeActive
+    }
+
+    func debugRemainingLockSeconds() -> Int {
+        remainingLockSeconds
+    }
+
+    func debugResetLockState() {
+        debugShouldRecordStatsForCompletedLocks = true
+        cancelLockTimer(reason: "debug reset")
+        remainingLockSeconds = 0
+        lockSequenceEndsAt = nil
+        isCompletingLockSequence = false
+        lockCompletion = nil
+        currentLockAppearance = nil
+        currentLockTrigger = .manual
+        currentScheduledLockTime = nil
+        isLockModeActive = false
+        isAwaitingLockActivation = false
+        hasPresentedLockWindows = false
+        sleepTransitionState = SleepTransitionState()
+        cancelPendingReactivations()
+        disposeLockWindows()
+        restoreLockedForegroundApplication()
+        previousActivationPolicy = nil
+        previousPresentationOptions = []
+    }
+#endif
 }

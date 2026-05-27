@@ -262,10 +262,15 @@ class ScheduleManager {
                 if trigger == .scheduled {
                     self?.markScheduledOccurrenceHandled(scheduledOccurrence)
                 }
-                self?.transitionToNormal()
+                self?.resumePostLockState()
             }
         }
         onStateChange?(.locked)
+    }
+
+    private func resumePostLockState() {
+        transitionToNormal()
+        checkSchedule()
     }
 
     func getTimeUntilLock() -> String {

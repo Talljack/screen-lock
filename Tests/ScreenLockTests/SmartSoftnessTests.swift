@@ -2,6 +2,46 @@ import XCTest
 @testable import ScreenLock
 
 final class SmartSoftnessTests: XCTestCase {
+    func testWarningDisplayProgressStartsFromManualBaseline() {
+        let calendar = Calendar(identifier: .gregorian)
+        let sampleTime = calendar.date(from: DateComponents(year: 2026, month: 5, day: 26, hour: 23, minute: 45))!
+
+        let baseline = ScreenManager.shared.debugResolvedSoftnessProfile(for: .smart, now: sampleTime)
+        let warningStartProgress = ScreenManager.shared.debugResolvedWarningDisplayProgress(
+            rawProgress: 0,
+            softnessLevel: .smart,
+            now: sampleTime
+        )
+
+        XCTAssertEqual(warningStartProgress, baseline.manualStrengthProgress, accuracy: 0.0001)
+    }
+
+    func testWarningDisplayProgressReachesFullStrengthAtLockTime() {
+        let calendar = Calendar(identifier: .gregorian)
+        let sampleTime = calendar.date(from: DateComponents(year: 2026, month: 5, day: 26, hour: 23, minute: 49))!
+
+        let finalProgress = ScreenManager.shared.debugResolvedWarningDisplayProgress(
+            rawProgress: 1,
+            softnessLevel: .warm,
+            now: sampleTime
+        )
+
+        XCTAssertEqual(finalProgress, 1, accuracy: 0.0001)
+    }
+
+    func testLockCountdownUsesAbsoluteEndTimeAfterLongSleep() {
+        let start = Date(timeIntervalSince1970: 1_000)
+        let afterLongSleep = start.addingTimeInterval((15 * 60) + 30)
+
+        let remaining = ScreenManager.shared.debugResolvedRemainingLockSeconds(
+            durationSeconds: 15 * 60,
+            startedAt: start,
+            now: afterLongSleep
+        )
+
+        XCTAssertEqual(remaining, 0)
+    }
+
     func testSmartSoftnessProfileIsDaytimeGentlerThanLateNight() {
         let calendar = Calendar(identifier: .gregorian)
         let daytime = calendar.date(from: DateComponents(year: 2026, month: 4, day: 29, hour: 12, minute: 0))!
