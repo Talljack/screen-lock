@@ -2,7 +2,6 @@ import Cocoa
 import CoreGraphics
 import IOKit.pwr_mgt
 import os.log
-import ApplicationServices
 
 private let log = OSLog(subsystem: "com.yugangcao.screenlock", category: "Screen")
 
@@ -69,7 +68,6 @@ class ScreenManager {
     private var isApplyingLockModeTransition = false
     private var lockedForegroundApplication: NSRunningApplication?
     private var didHideLockedForegroundApplication = false
-    private var lockedForegroundWasFullScreen = false
     /// Tracks whether any API capability is degraded.
     private(set) var statusMessage: String?
 
@@ -958,22 +956,19 @@ class ScreenManager {
         guard app.bundleIdentifier != Bundle.main.bundleIdentifier else { return }
 
         lockedForegroundApplication = app
-        lockedForegroundWasFullScreen = isFrontWindowFullScreen(for: app)
         didHideLockedForegroundApplication = app.hide()
         os_log(
-            "Captured foreground app for post-lock restore: %{public}@ (hidden=%{public}@, fullscreen=%{public}@)",
+            "Captured foreground app for post-lock restore: %{public}@ (hidden=%{public}@)",
             log: log,
             type: .info,
             app.localizedName ?? app.bundleIdentifier ?? "unknown",
-            didHideLockedForegroundApplication ? "true" : "false",
-            lockedForegroundWasFullScreen ? "true" : "false"
+            didHideLockedForegroundApplication ? "true" : "false"
         )
     }
 
     private func restoreLockedForegroundApplication() {
         guard let app = lockedForegroundApplication else { return }
         lockedForegroundApplication = nil
-        lockedForegroundWasFullScreen = false
         os_log(
             "Restoring foreground app after lock: %{public}@",
             log: log,
@@ -1026,7 +1021,7 @@ class ScreenManager {
         )
 
         for screen in NSScreen.screens {
-            let shouldUseDedicatedFullScreen = lockedForegroundWasFullScreen && screen == NSScreen.main
+            let shouldUseDedicatedFullScreen = screen == NSScreen.main
             os_log(
                 "Creating lock window for screen frame=%{public}@ visible=%{public}@ dedicatedFullScreen=%{public}@",
                 log: log,
@@ -1338,33 +1333,6 @@ class ScreenManager {
         return true
     }
 
-    private func isFrontWindowFullScreen(for app: NSRunningApplication) -> Bool {
-        let appElement = AXUIElementCreateApplication(app.processIdentifier)
-
-        var windowValue: CFTypeRef?
-        let focusedWindowStatus = AXUIElementCopyAttributeValue(
-            appElement,
-            kAXFocusedWindowAttribute as CFString,
-            &windowValue
-        )
-        guard focusedWindowStatus == .success, let windowValue else {
-            return false
-        }
-
-        let windowElement = unsafeBitCast(windowValue, to: AXUIElement.self)
-        var fullScreenValue: CFTypeRef?
-        let fullScreenStatus = AXUIElementCopyAttributeValue(
-            windowElement,
-            "AXFullScreen" as CFString,
-            &fullScreenValue
-        )
-        guard fullScreenStatus == .success else {
-            return false
-        }
-
-        return (fullScreenValue as? Bool) ?? false
-    }
-
     func restoreOriginalGamma() {
         previewRestoreWorkItem?.cancel()
         previewRestoreWorkItem = nil
@@ -1450,7 +1418,6 @@ class ScreenManager {
         restoreLockedForegroundApplication()
         previousActivationPolicy = nil
         previousPresentationOptions = []
-        lockedForegroundWasFullScreen = false
     }
 #endif
 }
