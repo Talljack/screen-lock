@@ -14,6 +14,28 @@ final class SmartSoftnessTests: XCTestCase {
         XCTAssertFalse(ScreenManager.shared.debugIsManualSoftnessPreviewActive())
     }
 
+    func testApplyingCurrentSoftnessOutsideWarningKeepsAmbientSoftnessActive() {
+        var settings = Settings.default
+        settings.warningSoftnessLevel = .smart
+        ScreenManager.shared.debugSettingsProvider = { settings }
+
+        ScreenManager.shared.applyCurrentSoftnessSetting()
+
+        XCTAssertTrue(ScreenManager.shared.debugIsAmbientSoftnessActive())
+        XCTAssertFalse(ScreenManager.shared.debugIsManualSoftnessPreviewActive())
+    }
+
+    func testSoftnessSelectionOutsideWarningKeepsAmbientSoftnessActive() {
+        var settings = Settings.default
+        settings.warningSoftnessLevel = .warm
+        ScreenManager.shared.debugSettingsProvider = { settings }
+
+        ScreenManager.shared.applySoftnessSelectionPreview()
+
+        XCTAssertTrue(ScreenManager.shared.debugIsAmbientSoftnessActive())
+        XCTAssertFalse(ScreenManager.shared.debugIsManualSoftnessPreviewActive())
+    }
+
     func testDisabledScheduledLockStillReappliesSoftnessSetting() {
         let scheduleManager = ScheduleManager.shared
         let screenManager = ScreenManager.shared
