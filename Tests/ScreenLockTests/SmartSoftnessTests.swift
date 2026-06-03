@@ -3,6 +3,7 @@ import XCTest
 
 final class SmartSoftnessTests: XCTestCase {
     override func tearDown() {
+        ScheduleManager.shared.debugSettingsProvider = nil
         ScreenManager.shared.debugResetLockState()
         super.tearDown()
     }
@@ -11,6 +12,28 @@ final class SmartSoftnessTests: XCTestCase {
         ScreenManager.shared.applyCurrentSoftnessSetting()
 
         XCTAssertFalse(ScreenManager.shared.debugIsManualSoftnessPreviewActive())
+    }
+
+    func testDisabledScheduledLockStillReappliesSoftnessSetting() {
+        let scheduleManager = ScheduleManager.shared
+        let screenManager = ScreenManager.shared
+        let originalHandler = screenManager.debugApplyCurrentSoftnessSettingHandler
+        var applyCount = 0
+        var settings = Settings.default
+        settings.lockEnabled = false
+
+        scheduleManager.debugSettingsProvider = { settings }
+        screenManager.debugApplyCurrentSoftnessSettingHandler = {
+            applyCount += 1
+        }
+
+        defer {
+            screenManager.debugApplyCurrentSoftnessSettingHandler = originalHandler
+        }
+
+        scheduleManager.checkSchedule()
+
+        XCTAssertGreaterThanOrEqual(applyCount, 1)
     }
 
     func testWarningDisplayProgressStartsFromManualBaseline() {
