@@ -2,6 +2,31 @@ import XCTest
 @testable import ScreenLock
 
 final class LockLifecycleTests: XCTestCase {
+    func testLockScreenWindowTargetsActiveFullscreenSpace() {
+        XCTAssertTrue(
+            LockScreenWindow.overlayCollectionBehavior.contains(.moveToActiveSpace)
+        )
+        XCTAssertTrue(
+            LockScreenWindow.overlayCollectionBehavior.contains(.fullScreenAuxiliary)
+        )
+    }
+
+    func testRequestLockActivationPreparesWindowsWhileWaitingForAppActivation() {
+        let screenManager = ScreenManager.shared
+        screenManager.debugIsAppActiveProvider = { false }
+        screenManager.debugConfigureLockState(
+            remainingSeconds: 60,
+            endsAt: Date().addingTimeInterval(60),
+            isLockModeActive: true,
+            trigger: .scheduled
+        )
+
+        screenManager.debugRequestLockActivationAndPresent()
+
+        XCTAssertTrue(screenManager.debugIsAwaitingLockActivation())
+        XCTAssertGreaterThan(screenManager.debugLockWindowCount(), 0)
+    }
+
     override func tearDown() {
         ScreenManager.shared.debugResetLockState()
         super.tearDown()

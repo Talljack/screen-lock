@@ -237,6 +237,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillFinishLaunching(_ notification: Notification) {}
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
+        terminateDuplicateInstancesIfNeeded()
+
         let settings = SettingsManager.shared.settings
         os_log("ScreenLock started — lock: %{public}@, warning: %d min",
                log: log, type: .info, settings.lockTime, settings.warningMinutes)
@@ -300,6 +302,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             PowerManager.shared.enablePreventSleep()
         } else {
             PowerManager.shared.disablePreventSleep()
+        }
+    }
+
+    private func terminateDuplicateInstancesIfNeeded() {
+        guard let bundleIdentifier = Bundle.main.bundleIdentifier else { return }
+
+        let others = NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier)
+            .filter { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }
+
+        guard !others.isEmpty else { return }
+
+        for app in others {
+            os_log(
+                "Terminating duplicate ScreenLock instance pid=%d",
+                log: log,
+                type: .info,
+                app.processIdentifier
+            )
+            if !app.terminate() {
+                app.forceTerminate()
+            }
         }
     }
 
