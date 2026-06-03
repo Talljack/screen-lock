@@ -766,12 +766,14 @@ class MenuBarController {
         }
 
         SettingsManager.shared.updateWarningSoftnessLevel(level)
+        ScreenManager.shared.applySoftnessSelectionPreview()
         updateUI()
         performFeedback()
     }
 
     @objc private func smartPreferenceSliderChanged(_ sender: NSSlider) {
         SettingsManager.shared.updateSmartSoftnessBias(sender.doubleValue)
+        ScreenManager.shared.applySoftnessSelectionPreview()
         updateUI()
     }
 

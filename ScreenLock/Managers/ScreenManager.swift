@@ -2,6 +2,7 @@ import Cocoa
 import CoreGraphics
 import IOKit.pwr_mgt
 import os.log
+import ApplicationServices
 
 private let log = OSLog(subsystem: "com.yugangcao.screenlock", category: "Screen")
 
@@ -11,6 +12,7 @@ class ScreenManager {
 #if DEBUG
     var debugApplyCurrentSoftnessSettingHandler: (() -> Void)?
     var debugShouldRecordStatsForCompletedLocks = true
+    var debugIsAppActiveProvider: (() -> Bool)?
 #endif
 
     struct SleepTransitionState: Equatable {
@@ -67,6 +69,7 @@ class ScreenManager {
     private var isApplyingLockModeTransition = false
     private var lockedForegroundApplication: NSRunningApplication?
     private var didHideLockedForegroundApplication = false
+    private var lockedForegroundWasFullScreen = false
     /// Tracks whether any API capability is degraded.
     private(set) var statusMessage: String?
 
@@ -335,7 +338,20 @@ class ScreenManager {
         previewRestoreWorkItem?.cancel()
         previewRestoreWorkItem = nil
 
-        applyCurrentSoftnessSetting()
+        let settings = SettingsManager.shared.settings.validated()
+        let level = settings.warningSoftnessLevel
+        let profile = resolvedSoftnessProfile(for: settings.warningSoftnessLevel)
+
+        if ScheduleManager.shared.isInWarningState {
+            refreshWarningDimming(
+                progress: currentDimmingProgress,
+                durationMinutes: settings.warningMinutes,
+                softnessLevel: level
+            )
+            return
+        }
+
+        applyTimedPreview(level: level, profile: profile)
     }
 
     func applyCurrentSoftnessSetting() {
@@ -349,7 +365,6 @@ class ScreenManager {
 
         let settings = SettingsManager.shared.settings.validated()
         let level = settings.warningSoftnessLevel
-        let profile = resolvedSoftnessProfile(for: settings.warningSoftnessLevel)
 
         if ScheduleManager.shared.isInWarningState {
             isManualSoftnessPreviewActive = false
@@ -361,7 +376,9 @@ class ScreenManager {
             return
         }
 
-        applyManualSoftness(level, profile: profile)
+        cancelDimming()
+        isManualSoftnessPreviewActive = false
+        restoreOriginalGamma()
     }
 
     func clearManualSoftnessPreviewIfNeeded() {
@@ -817,6 +834,7 @@ class ScreenManager {
     private func completeLockSequence() {
         guard !isCompletingLockSequence else { return }
         isCompletingLockSequence = true
+        os_log("Completing lock sequence", log: log, type: .info)
 
         let settings = SettingsManager.shared.settings
         #if DEBUG
@@ -855,7 +873,6 @@ class ScreenManager {
         lockSequenceEndsAt = nil
         hasPresentedLockWindows = false
         isAwaitingLockActivation = false
-        restoreLockedForegroundApplication()
 
         if force {
             disposeLockWindows()
@@ -869,6 +886,7 @@ class ScreenManager {
         }
 
         exitLockMode()
+        restoreLockedForegroundApplication()
     }
 
     private func disposeLockWindows() {
@@ -901,11 +919,6 @@ class ScreenManager {
             _ = NSApp.setActivationPolicy(.regular)
         }
 
-        if lockWindows.isEmpty, currentLockAppearance != nil {
-            os_log("Preparing lock windows before applying lock mode restrictions", log: log, type: .info)
-            rebuildLockWindows(animated: false)
-        }
-
         NSApp.presentationOptions = [
             .autoHideDock,
             .autoHideMenuBar,
@@ -932,6 +945,9 @@ class ScreenManager {
         cancelPendingReactivations()
         PowerManager.shared.disableLockScreenWakefulness()
         NSApp.presentationOptions = previousPresentationOptions
+        if let previousActivationPolicy {
+            _ = NSApp.setActivationPolicy(previousActivationPolicy)
+        }
         previousActivationPolicy = nil
         isLockModeActive = false
     }
@@ -942,36 +958,36 @@ class ScreenManager {
         guard app.bundleIdentifier != Bundle.main.bundleIdentifier else { return }
 
         lockedForegroundApplication = app
-        didHideLockedForegroundApplication = !app.isHidden
-        if didHideLockedForegroundApplication {
-            os_log(
-                "Hiding foreground app during lock: %{public}@",
-                log: log,
-                type: .info,
-                app.localizedName ?? app.bundleIdentifier ?? "unknown"
-            )
-            app.hide()
-        }
+        lockedForegroundWasFullScreen = isFrontWindowFullScreen(for: app)
+        didHideLockedForegroundApplication = app.hide()
+        os_log(
+            "Captured foreground app for post-lock restore: %{public}@ (hidden=%{public}@, fullscreen=%{public}@)",
+            log: log,
+            type: .info,
+            app.localizedName ?? app.bundleIdentifier ?? "unknown",
+            didHideLockedForegroundApplication ? "true" : "false",
+            lockedForegroundWasFullScreen ? "true" : "false"
+        )
     }
 
     private func restoreLockedForegroundApplication() {
         guard let app = lockedForegroundApplication else { return }
         lockedForegroundApplication = nil
-
-        guard didHideLockedForegroundApplication else {
-            didHideLockedForegroundApplication = false
-            return
-        }
-
-        didHideLockedForegroundApplication = false
+        lockedForegroundWasFullScreen = false
         os_log(
             "Restoring foreground app after lock: %{public}@",
             log: log,
             type: .info,
             app.localizedName ?? app.bundleIdentifier ?? "unknown"
         )
-        app.unhide()
-        app.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
+        let shouldUnhide = didHideLockedForegroundApplication
+        didHideLockedForegroundApplication = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            if shouldUnhide {
+                app.unhide()
+            }
+            app.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
+        }
     }
 
     private func rebuildLockWindowsIfNeeded(animated: Bool) {
@@ -1010,19 +1026,34 @@ class ScreenManager {
         )
 
         for screen in NSScreen.screens {
+            let shouldUseDedicatedFullScreen = lockedForegroundWasFullScreen && screen == NSScreen.main
             os_log(
-                "Creating lock window for screen frame=%{public}@ visible=%{public}@",
+                "Creating lock window for screen frame=%{public}@ visible=%{public}@ dedicatedFullScreen=%{public}@",
                 log: log,
                 type: .info,
                 NSStringFromRect(screen.frame),
-                NSStringFromRect(screen.visibleFrame)
+                NSStringFromRect(screen.visibleFrame),
+                shouldUseDedicatedFullScreen ? "true" : "false"
             )
             let window = LockScreenWindow(
                 screen: screen,
                 remainingSeconds: remainingLockSeconds,
-                appearance: appearance
+                appearance: appearance,
+                presentationMode: shouldUseDedicatedFullScreen ? .dedicatedFullScreenPrimary : .overlay
+            )
+            os_log(
+                "Created lock window instance number=%{public}@",
+                log: log,
+                type: .info,
+                String(describing: window.windowNumber)
             )
             lockWindows.append(window)
+            os_log(
+                "Appended lock window, total now=%d",
+                log: log,
+                type: .info,
+                lockWindows.count
+            )
         }
 
         os_log(
@@ -1037,11 +1068,15 @@ class ScreenManager {
 
     private func activateLockWindows(animated: Bool) {
         guard isLockModeActive, !lockWindows.isEmpty else { return }
-        if finishExpiredLockSequenceIfNeeded(reason: "lock window activation") {
+        if finishExpiredLockSequenceIfNeeded(reason: "lock window activation", shouldResync: false) {
             return
         }
 
+#if DEBUG
+        let isActive = debugIsAppActiveProvider?() ?? NSApp.isActive
+#else
         let isActive = NSApp.isActive
+#endif
 
         os_log(
             "Activating lock windows (animated=%{public}@, active=%{public}@, windows=%d)",
@@ -1102,7 +1137,7 @@ class ScreenManager {
 
     private func reactivateLockModeIfNeeded() {
         guard isLockModeActive, !lockWindows.isEmpty else { return }
-        if finishExpiredLockSequenceIfNeeded(reason: "reactivation") {
+        if finishExpiredLockSequenceIfNeeded(reason: "reactivation", shouldResync: false) {
             return
         }
         activateLockWindows(animated: false)
@@ -1111,16 +1146,27 @@ class ScreenManager {
 
     private func requestLockActivationAndPresent() {
         guard isLockModeActive else { return }
-        if finishExpiredLockSequenceIfNeeded(reason: "activation request") {
+        if finishExpiredLockSequenceIfNeeded(reason: "activation request", shouldResync: false) {
             return
         }
 
         os_log("Requesting lock activation", log: log, type: .info)
 
+#if DEBUG
+        let isAppActive = debugIsAppActiveProvider?() ?? NSApp.isActive
+#else
+        let isAppActive = NSApp.isActive
+#endif
+
         if lockWindows.isEmpty {
             rebuildLockWindows(animated: false)
         } else {
             activateLockWindows(animated: false)
+        }
+
+        isAwaitingLockActivation = !isAppActive
+        if !isAppActive {
+            requestAppActivation()
         }
 
         scheduleReactivationBurst()
@@ -1137,7 +1183,7 @@ class ScreenManager {
 
     private func completePendingLockPresentationIfNeeded() {
         guard isAwaitingLockActivation, isLockModeActive else { return }
-        if finishExpiredLockSequenceIfNeeded(reason: "pending activation completion") {
+        if finishExpiredLockSequenceIfNeeded(reason: "pending activation completion", shouldResync: false) {
             return
         }
         guard NSApp.isActive else {
@@ -1159,6 +1205,9 @@ class ScreenManager {
 
         for delay in [0.0, 0.05, 0.2, 0.6] {
             let workItem = DispatchWorkItem { [weak self] in
+                if self?.isAwaitingLockActivation == true {
+                    self?.requestAppActivation()
+                }
                 self?.activateLockWindowsIfNeeded()
                 self?.completePendingLockPresentationIfNeeded()
             }
@@ -1234,10 +1283,10 @@ class ScreenManager {
             updateLockWindows()
         }
 
-        requestLockActivationAndPresent()
         if lockTimer == nil {
             startLockCountdown(now: now)
         }
+        requestLockActivationAndPresent()
     }
 
     private func abortActiveLockSequence(reason: String) {
@@ -1253,10 +1302,10 @@ class ScreenManager {
         currentScheduledLockTime = nil
         hasPresentedLockWindows = false
         isAwaitingLockActivation = false
-        restoreLockedForegroundApplication()
         cancelPendingReactivations()
         disposeLockWindows()
         exitLockMode()
+        restoreLockedForegroundApplication()
 
         let completion = lockCompletion
         lockCompletion = nil
@@ -1272,15 +1321,48 @@ class ScreenManager {
         remainingLockSeconds = max(Int(ceil(lockSequenceEndsAt.timeIntervalSince(now))), 0)
     }
 
-    private func finishExpiredLockSequenceIfNeeded(reason: String, now: Date = Date()) -> Bool {
+    private func finishExpiredLockSequenceIfNeeded(
+        reason: String,
+        now: Date = Date(),
+        shouldResync: Bool = true
+    ) -> Bool {
         guard lockSequenceEndsAt != nil else { return false }
 
-        syncRemainingLockCountdown(now: now)
+        if shouldResync {
+            syncRemainingLockCountdown(now: now)
+        }
         guard remainingLockSeconds <= 0 else { return false }
 
         os_log("Finishing expired lock sequence during %{public}@", log: log, type: .info, reason)
         completeLockSequence()
         return true
+    }
+
+    private func isFrontWindowFullScreen(for app: NSRunningApplication) -> Bool {
+        let appElement = AXUIElementCreateApplication(app.processIdentifier)
+
+        var windowValue: CFTypeRef?
+        let focusedWindowStatus = AXUIElementCopyAttributeValue(
+            appElement,
+            kAXFocusedWindowAttribute as CFString,
+            &windowValue
+        )
+        guard focusedWindowStatus == .success, let windowValue else {
+            return false
+        }
+
+        let windowElement = unsafeBitCast(windowValue, to: AXUIElement.self)
+        var fullScreenValue: CFTypeRef?
+        let fullScreenStatus = AXUIElementCopyAttributeValue(
+            windowElement,
+            "AXFullScreen" as CFString,
+            &fullScreenValue
+        )
+        guard fullScreenStatus == .success else {
+            return false
+        }
+
+        return (fullScreenValue as? Bool) ?? false
     }
 
     func restoreOriginalGamma() {
@@ -1300,6 +1382,7 @@ class ScreenManager {
         remainingSeconds: Int,
         endsAt: Date?,
         isLockModeActive: Bool,
+        appearance: LockScreenAppearance? = .default,
         trigger: LockEvent.Trigger = .manual,
         scheduledLockTime: String? = nil,
         completion: (() -> Void)? = nil
@@ -1307,12 +1390,12 @@ class ScreenManager {
         self.remainingLockSeconds = remainingSeconds
         self.lockSequenceEndsAt = endsAt
         self.isLockModeActive = isLockModeActive
+        self.currentLockAppearance = appearance
         self.currentLockTrigger = trigger
         self.currentScheduledLockTime = scheduledLockTime
         self.lockCompletion = completion
         self.hasPresentedLockWindows = false
         self.isAwaitingLockActivation = false
-        self.currentLockAppearance = nil
     }
 
     func debugHandleSystemWake(reason: String, now: Date) {
@@ -1331,8 +1414,25 @@ class ScreenManager {
         remainingLockSeconds
     }
 
+    func debugIsManualSoftnessPreviewActive() -> Bool {
+        isManualSoftnessPreviewActive
+    }
+
+    func debugIsAwaitingLockActivation() -> Bool {
+        isAwaitingLockActivation
+    }
+
+    func debugLockWindowCount() -> Int {
+        lockWindows.count
+    }
+
+    func debugRequestLockActivationAndPresent() {
+        requestLockActivationAndPresent()
+    }
+
     func debugResetLockState() {
         debugShouldRecordStatsForCompletedLocks = true
+        debugIsAppActiveProvider = nil
         cancelLockTimer(reason: "debug reset")
         remainingLockSeconds = 0
         lockSequenceEndsAt = nil
@@ -1350,6 +1450,7 @@ class ScreenManager {
         restoreLockedForegroundApplication()
         previousActivationPolicy = nil
         previousPresentationOptions = []
+        lockedForegroundWasFullScreen = false
     }
 #endif
 }

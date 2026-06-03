@@ -1,4 +1,12 @@
 import Cocoa
+import os
+
+private let log = OSLog(subsystem: "com.yugangcao.screenlock", category: "LockWindow")
+
+enum LockScreenPresentationMode: Equatable {
+    case overlay
+    case dedicatedFullScreenPrimary
+}
 
 struct LockScreenPalette {
     let gradientColors: [NSColor]
@@ -117,24 +125,51 @@ private final class LockScreenBackgroundView: NSView {
 }
 
 class LockScreenWindow: NSWindow {
+    static let overlayCollectionBehavior: NSWindow.CollectionBehavior = [
+        .moveToActiveSpace,
+        .fullScreenAuxiliary,
+        .stationary,
+        .ignoresCycle,
+        .transient
+    ]
+    static let dedicatedFullScreenCollectionBehavior: NSWindow.CollectionBehavior = [
+        .fullScreenPrimary,
+        .fullScreenDisallowsTiling,
+        .stationary,
+        .ignoresCycle,
+        .transient
+    ]
+
     private var lockAppearance: LockScreenAppearance
     private var palette: LockScreenPalette
+    private let presentationMode: LockScreenPresentationMode
     private var countdownLabel: NSTextField?
     private var cardView: NSVisualEffectView?
     private var allowClose = false
-    private var keepOnTopTimer: Timer?
     private var resignKeyObserver: NSObjectProtocol?
+    private var frontmostPulseTimer: Timer?
+    private var frontmostPulseDeadline: Date?
+    private var didRequestDedicatedFullScreen = false
 
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
 
-    init(screen: NSScreen, remainingSeconds: Int, appearance: LockScreenAppearance) {
+    init(
+        screen: NSScreen,
+        remainingSeconds: Int,
+        appearance: LockScreenAppearance,
+        presentationMode: LockScreenPresentationMode = .overlay
+    ) {
         self.lockAppearance = appearance.validated()
         self.palette = appearance.theme.palette
+        self.presentationMode = presentationMode
+        os_log("LockScreenWindow init start", log: log, type: .info)
 
         super.init(
             contentRect: screen.frame,
-            styleMask: [.borderless, .fullSizeContentView],
+            styleMask: presentationMode == .dedicatedFullScreenPrimary
+                ? [.borderless, .resizable, .fullSizeContentView]
+                : [.borderless, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -142,8 +177,11 @@ class LockScreenWindow: NSWindow {
         setFrame(screen.frame, display: false)
         alphaValue = 0
         isReleasedWhenClosed = false
+        os_log("LockScreenWindow init before setupWindow", log: log, type: .info)
         setupWindow()
+        os_log("LockScreenWindow init before setupUI", log: log, type: .info)
         setupUI(remainingSeconds: remainingSeconds)
+        os_log("LockScreenWindow init finished", log: log, type: .info)
     }
 
     func animateIn() {
@@ -167,30 +205,29 @@ class LockScreenWindow: NSWindow {
             card.transform = CATransform3DIdentity
         }
 
-        startKeepOnTopProtection()
+        startFocusProtection()
     }
 
     func showImmediately() {
         alphaValue = 1
+        displayIfNeeded()
         reinforceFrontmost()
-        startKeepOnTopProtection()
+        requestDedicatedFullScreenIfNeeded()
+        startFocusProtection()
     }
 
     func reinforceFrontmost() {
         orderFrontRegardless()
         orderFront(nil)
         makeKeyAndOrderFront(nil)
+        requestDedicatedFullScreenIfNeeded()
     }
 
     private func setupWindow() {
-        level = NSWindow.Level(rawValue: Int(CGShieldingWindowLevel()))
-        collectionBehavior = [
-            .canJoinAllSpaces,
-            .fullScreenAuxiliary,
-            .stationary,
-            .ignoresCycle,
-            .transient
-        ]
+        level = presentationMode == .dedicatedFullScreenPrimary ? .mainMenu : .screenSaver
+        collectionBehavior = presentationMode == .dedicatedFullScreenPrimary
+            ? Self.dedicatedFullScreenCollectionBehavior
+            : Self.overlayCollectionBehavior
         isOpaque = true
         backgroundColor = .black
         ignoresMouseEvents = false
@@ -207,7 +244,22 @@ class LockScreenWindow: NSWindow {
         hidesOnDeactivate = false
     }
 
-    private func startKeepOnTopProtection() {
+    private func requestDedicatedFullScreenIfNeeded() {
+        guard presentationMode == .dedicatedFullScreenPrimary else { return }
+        guard !didRequestDedicatedFullScreen else { return }
+        guard !styleMask.contains(.fullScreen) else { return }
+
+        didRequestDedicatedFullScreen = true
+        os_log("Requesting dedicated full-screen lock space", log: log, type: .info)
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            guard !self.allowClose else { return }
+            guard !self.styleMask.contains(.fullScreen) else { return }
+            self.toggleFullScreen(nil)
+        }
+    }
+
+    private func startFocusProtection() {
         if resignKeyObserver == nil {
             resignKeyObserver = NotificationCenter.default.addObserver(
                 forName: NSWindow.didResignKeyNotification,
@@ -218,17 +270,31 @@ class LockScreenWindow: NSWindow {
             }
         }
 
-        guard keepOnTopTimer == nil else { return }
-        keepOnTopTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            guard let self, !self.allowClose else { return }
-            self.orderFrontRegardless()
+        frontmostPulseDeadline = Date().addingTimeInterval(6)
+        guard frontmostPulseTimer == nil else { return }
+        frontmostPulseTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] timer in
+            guard let self else {
+                timer.invalidate()
+                return
+            }
+            guard !self.allowClose else {
+                timer.invalidate()
+                self.frontmostPulseTimer = nil
+                return
+            }
+            if let deadline = self.frontmostPulseDeadline, Date() > deadline {
+                timer.invalidate()
+                self.frontmostPulseTimer = nil
+                return
+            }
+            self.reinforceFrontmost()
         }
     }
 
-    private func stopKeepOnTopProtection() {
-        keepOnTopTimer?.invalidate()
-        keepOnTopTimer = nil
-
+    private func stopFocusProtection() {
+        frontmostPulseTimer?.invalidate()
+        frontmostPulseTimer = nil
+        frontmostPulseDeadline = nil
         if let resignKeyObserver {
             NotificationCenter.default.removeObserver(resignKeyObserver)
             self.resignKeyObserver = nil
@@ -236,14 +302,25 @@ class LockScreenWindow: NSWindow {
     }
 
     private func setupUI(remainingSeconds: Int) {
+        os_log("LockScreenWindow setupUI start", log: log, type: .info)
+        os_log("LockScreenWindow resolving background image", log: log, type: .info)
+        let backgroundImage = lockAppearance.resolvedBackgroundImage()
+        os_log(
+            "LockScreenWindow background image resolved=%{public}@",
+            log: log,
+            type: .info,
+            backgroundImage == nil ? "false" : "true"
+        )
         let backgroundView = LockScreenBackgroundView(
             palette: palette,
             theme: lockAppearance.theme,
-            backgroundImage: lockAppearance.resolvedBackgroundImage()
+            backgroundImage: backgroundImage
         )
         backgroundView.translatesAutoresizingMaskIntoConstraints = false
+        os_log("LockScreenWindow assigning contentView", log: log, type: .info)
         contentView = backgroundView
 
+        os_log("LockScreenWindow creating card", log: log, type: .info)
         let card = NSVisualEffectView()
         card.translatesAutoresizingMaskIntoConstraints = false
         card.material = .hudWindow
@@ -305,6 +382,7 @@ class LockScreenWindow: NSWindow {
         footerLabel.alignment = .center
         stack.addArrangedSubview(footerLabel)
 
+        os_log("LockScreenWindow activating constraints", log: log, type: .info)
         NSLayoutConstraint.activate([
             card.centerXAnchor.constraint(equalTo: backgroundView.centerXAnchor),
             card.centerYAnchor.constraint(equalTo: backgroundView.centerYAnchor),
@@ -324,6 +402,7 @@ class LockScreenWindow: NSWindow {
             countdownLabel!.centerXAnchor.constraint(equalTo: countdownContainer.centerXAnchor),
             countdownLabel!.centerYAnchor.constraint(equalTo: countdownContainer.centerYAnchor)
         ])
+        os_log("LockScreenWindow setupUI finished", log: log, type: .info)
     }
 
     func updateRemainingSeconds(_ seconds: Int) {
@@ -344,12 +423,12 @@ class LockScreenWindow: NSWindow {
 
     func allowDismiss() {
         allowClose = true
-        stopKeepOnTopProtection()
+        stopFocusProtection()
     }
 
     func dismissForSystemLock() {
         allowClose = true
-        stopKeepOnTopProtection()
+        stopFocusProtection()
         orderOut(nil)
     }
 
@@ -358,12 +437,12 @@ class LockScreenWindow: NSWindow {
             NSSound.beep()
             return
         }
-        stopKeepOnTopProtection()
+        stopFocusProtection()
         super.close()
     }
 
     deinit {
-        stopKeepOnTopProtection()
+        stopFocusProtection()
     }
 
     override func keyDown(with event: NSEvent) {

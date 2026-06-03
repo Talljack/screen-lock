@@ -2,6 +2,17 @@ import XCTest
 @testable import ScreenLock
 
 final class SmartSoftnessTests: XCTestCase {
+    override func tearDown() {
+        ScreenManager.shared.debugResetLockState()
+        super.tearDown()
+    }
+
+    func testApplyingCurrentSoftnessOutsideWarningDoesNotLeaveManualPreviewActive() {
+        ScreenManager.shared.applyCurrentSoftnessSetting()
+
+        XCTAssertFalse(ScreenManager.shared.debugIsManualSoftnessPreviewActive())
+    }
+
     func testWarningDisplayProgressStartsFromManualBaseline() {
         let calendar = Calendar(identifier: .gregorian)
         let sampleTime = calendar.date(from: DateComponents(year: 2026, month: 5, day: 26, hour: 23, minute: 45))!
