@@ -12,6 +12,7 @@ class ScreenManager {
     var debugApplyCurrentSoftnessSettingHandler: (() -> Void)?
     var debugShouldRecordStatsForCompletedLocks = true
     var debugIsAppActiveProvider: (() -> Bool)?
+    var debugSettingsProvider: (() -> Settings)?
 #endif
 
     struct SleepTransitionState: Equatable {
@@ -64,6 +65,7 @@ class ScreenManager {
     private var reactivationWorkItems: [DispatchWorkItem] = []
     private var previewRestoreWorkItem: DispatchWorkItem?
     private var isManualSoftnessPreviewActive = false
+    private var isAmbientSoftnessActive = false
     private var isApplyingGammaUpdate = false
     private var isApplyingLockModeTransition = false
     private var lockedForegroundApplication: NSRunningApplication?
@@ -336,7 +338,7 @@ class ScreenManager {
         previewRestoreWorkItem?.cancel()
         previewRestoreWorkItem = nil
 
-        let settings = SettingsManager.shared.settings.validated()
+        let settings = currentSettings()
         let level = settings.warningSoftnessLevel
         let profile = resolvedSoftnessProfile(for: settings.warningSoftnessLevel)
 
@@ -349,7 +351,7 @@ class ScreenManager {
             return
         }
 
-        applyTimedPreview(level: level, profile: profile)
+        applyAmbientSoftness(level: level, profile: profile)
     }
 
     func applyCurrentSoftnessSetting() {
@@ -361,11 +363,12 @@ class ScreenManager {
 
         SunCycleManager.shared.requestLocationIfNeeded()
 
-        let settings = SettingsManager.shared.settings.validated()
+        let settings = currentSettings()
         let level = settings.warningSoftnessLevel
 
         if ScheduleManager.shared.isInWarningState {
             isManualSoftnessPreviewActive = false
+            isAmbientSoftnessActive = false
             refreshWarningDimming(
                 progress: currentDimmingProgress,
                 durationMinutes: settings.warningMinutes,
@@ -374,9 +377,8 @@ class ScreenManager {
             return
         }
 
-        cancelDimming()
-        isManualSoftnessPreviewActive = false
-        restoreOriginalGamma()
+        let profile = resolvedSoftnessProfile(for: level)
+        applyAmbientSoftness(level: level, profile: profile)
     }
 
     func clearManualSoftnessPreviewIfNeeded() {
@@ -387,6 +389,7 @@ class ScreenManager {
 
     private func applyManualSoftness(_ level: WarningSoftnessLevel, profile: SoftnessProfile) {
         isManualSoftnessPreviewActive = level != .off
+        isAmbientSoftnessActive = false
         cancelDimming()
 
         guard level != .off else {
@@ -421,7 +424,7 @@ class ScreenManager {
             )
         }
 
-        let bias = SettingsManager.shared.settings.validated().smartSoftnessBias
+        let bias = currentSettings().smartSoftnessBias
 
         if let solarProfile = resolvedSolarSoftnessProfile(now: now, bias: bias) {
             return solarProfile
@@ -636,6 +639,7 @@ class ScreenManager {
 
     private func applyTimedPreview(level: WarningSoftnessLevel, profile: SoftnessProfile) {
         isManualSoftnessPreviewActive = false
+        isAmbientSoftnessActive = false
 
         guard level != .off else {
             cancelDimming()
@@ -657,6 +661,22 @@ class ScreenManager {
 
         previewRestoreWorkItem = restoreWorkItem
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2, execute: restoreWorkItem)
+    }
+
+    private func applyAmbientSoftness(level: WarningSoftnessLevel, profile: SoftnessProfile) {
+        isManualSoftnessPreviewActive = false
+        cancelDimming()
+
+        guard level != .off else {
+            isAmbientSoftnessActive = false
+            restoreOriginalGamma()
+            return
+        }
+
+        restoreOriginalGamma()
+        ensureOriginalGamma()
+        applyDimmingAndWarmth(progress: profile.manualStrengthProgress, softnessLevel: level, profile: profile)
+        isAmbientSoftnessActive = true
     }
 
     private func ensureDimmingTimer() {
@@ -686,7 +706,7 @@ class ScreenManager {
     private func updateActiveDimming() {
         guard isDimming, let dimmingStartDate else { return }
 
-        let softnessLevel = SettingsManager.shared.settings.validated().warningSoftnessLevel
+        let softnessLevel = currentSettings().warningSoftnessLevel
         guard softnessLevel != .off else {
             cancelDimming()
             return
@@ -1341,6 +1361,14 @@ class ScreenManager {
         os_log("Original gamma restored", log: log, type: .info)
     }
 
+    private func currentSettings() -> Settings {
+#if DEBUG
+        return (debugSettingsProvider?() ?? SettingsManager.shared.settings).validated()
+#else
+        return SettingsManager.shared.settings.validated()
+#endif
+    }
+
 #if DEBUG
     func debugResolvedRemainingLockSeconds(durationSeconds: Int, startedAt: Date, now: Date) -> Int {
         max(Int(ceil(startedAt.addingTimeInterval(TimeInterval(durationSeconds)).timeIntervalSince(now))), 0)
@@ -1386,6 +1414,10 @@ class ScreenManager {
         isManualSoftnessPreviewActive
     }
 
+    func debugIsAmbientSoftnessActive() -> Bool {
+        isAmbientSoftnessActive
+    }
+
     func debugIsAwaitingLockActivation() -> Bool {
         isAwaitingLockActivation
     }
@@ -1401,6 +1433,7 @@ class ScreenManager {
     func debugResetLockState() {
         debugShouldRecordStatsForCompletedLocks = true
         debugIsAppActiveProvider = nil
+        debugSettingsProvider = nil
         cancelLockTimer(reason: "debug reset")
         remainingLockSeconds = 0
         lockSequenceEndsAt = nil
@@ -1418,6 +1451,7 @@ class ScreenManager {
         restoreLockedForegroundApplication()
         previousActivationPolicy = nil
         previousPresentationOptions = []
+        isAmbientSoftnessActive = false
     }
 #endif
 }
